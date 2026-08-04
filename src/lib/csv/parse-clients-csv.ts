@@ -42,6 +42,14 @@ export function berekenNulmetingMaanden(startmaand: string): { jaar: number; maa
   return maanden;
 }
 
+function parseNumeriekeCel(raw: string | undefined, veldnaam: string, errors: string[]): number {
+  const waarde = Number(raw);
+  if (!raw?.trim() || Number.isNaN(waarde)) {
+    errors.push(`${veldnaam} is geen geldig getal`);
+  }
+  return waarde;
+}
+
 export function parseClientsCsv(csvText: string): ParsedListingRow[] {
   const { data } = Papa.parse<ClientCsvRow>(csvText, { header: true, skipEmptyLines: true });
 
@@ -56,13 +64,8 @@ export function parseClientsCsv(csvText: string): ParsedListingRow[] {
     try {
       const maanden = berekenNulmetingMaanden(row.startmaand);
       nulmeting = maanden.map(({ jaar, maand }, i) => {
-        const omzetRaw = row[`omzet_${i + 1}`];
-        const bezettingRaw = row[`bezetting_${i + 1}`];
-        const omzet = Number(omzetRaw);
-        const bezetting = Number(bezettingRaw);
-        if (omzetRaw === '' || Number.isNaN(omzet)) errors.push(`omzet_${i + 1} is geen geldig getal`);
-        if (bezettingRaw === '' || Number.isNaN(bezetting))
-          errors.push(`bezetting_${i + 1} is geen geldig getal`);
+        const omzet = parseNumeriekeCel(row[`omzet_${i + 1}`], `omzet_${i + 1}`, errors);
+        const bezetting = parseNumeriekeCel(row[`bezetting_${i + 1}`], `bezetting_${i + 1}`, errors);
         return { jaar, maand, omzet, bezetting };
       });
     } catch (error) {

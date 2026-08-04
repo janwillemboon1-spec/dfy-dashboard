@@ -47,4 +47,21 @@ describe('parseClientsCsv', () => {
     const rijen = parseClientsCsv(csv);
     expect(rijen[0].errors).toContain('bezetting_1 is geen geldig getal');
   });
+
+  it('markeert een bezetting-cel met alleen witruimte als fout in plaats van deze als 0 te lezen', () => {
+    const waarden = ['1000, '].concat(Array.from({ length: 11 }, () => '1000,50')).join(',');
+    const csv = `${header}\nJan Jansen,jan@voorbeeld.nl,0612345678,Strandhuisje,Duinweg 1,2025-01,${waarden}`;
+
+    const rijen = parseClientsCsv(csv);
+    expect(rijen[0].errors).toContain('bezetting_1 is geen geldig getal');
+  });
+
+  it('vangt een ongeldige startmaand op en levert een lege nulmeting met de foutmelding', () => {
+    const waarden = Array.from({ length: 12 }, () => '1000,50').join(',');
+    const csv = `${header}\nJan Jansen,jan@voorbeeld.nl,0612345678,Strandhuisje,Duinweg 1,augustus-2025,${waarden}`;
+
+    const rijen = parseClientsCsv(csv);
+    expect(rijen[0].nulmeting).toEqual([]);
+    expect(rijen[0].errors).toContain('Ongeldige startmaand: "augustus-2025", verwacht formaat JJJJ-MM');
+  });
 });
