@@ -3,10 +3,12 @@ import { createClient } from '@/lib/supabase/server';
 
 export default async function KlantenPage() {
   const supabase = await createClient();
-  const { data: klanten } = await supabase
+  const { data: klanten, error } = await supabase
     .from('clients')
     .select('id, naam, email, status, aangemaakt_op, listings(count)')
     .order('aangemaakt_op', { ascending: false });
+
+  if (error) console.error('Kon klanten niet laden:', error);
 
   return (
     <main className="mx-auto max-w-5xl py-10 px-4">
@@ -21,30 +23,37 @@ export default async function KlantenPage() {
           </Link>
         </div>
       </div>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-border text-left text-muted-foreground">
-            <th className="py-2">Naam</th>
-            <th>E-mail</th>
-            <th>Status</th>
-            <th>Accommodaties</th>
-            <th>Aangemaakt</th>
-          </tr>
-        </thead>
-        <tbody>
-          {klanten?.map((klant) => (
-            <tr key={klant.id} className="border-b border-border/50">
-              <td className="py-2">
-                <Link href={`/admin/klanten/${klant.id}`} className="hover:underline">{klant.naam}</Link>
-              </td>
-              <td>{klant.email}</td>
-              <td>{klant.status}</td>
-              <td>{klant.listings?.[0]?.count ?? 0}</td>
-              <td>{new Date(klant.aangemaakt_op).toLocaleDateString('nl-NL')}</td>
+      {error ? (
+        <p className="text-sm text-destructive">Kon klanten niet laden. Probeer de pagina te vernieuwen.</p>
+      ) : klanten && klanten.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Nog geen klanten. Voeg je eerste klant toe.</p>
+      ) : (
+        <table className="w-full text-sm">
+          <caption className="sr-only">Overzicht van alle klanten</caption>
+          <thead>
+            <tr className="border-b border-border text-left text-muted-foreground">
+              <th scope="col" className="py-2">Naam</th>
+              <th scope="col">E-mail</th>
+              <th scope="col">Status</th>
+              <th scope="col">Accommodaties</th>
+              <th scope="col">Aangemaakt</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {klanten?.map((klant) => (
+              <tr key={klant.id} className="border-b border-border/50">
+                <td className="py-2">
+                  <Link href={`/admin/klanten/${klant.id}`} className="hover:underline">{klant.naam}</Link>
+                </td>
+                <td>{klant.email}</td>
+                <td>{klant.status}</td>
+                <td>{klant.listings?.[0]?.count ?? 0}</td>
+                <td>{new Date(klant.aangemaakt_op).toLocaleDateString('nl-NL')}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </main>
   );
 }
