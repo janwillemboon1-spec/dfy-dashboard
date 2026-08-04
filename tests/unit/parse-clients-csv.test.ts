@@ -40,6 +40,14 @@ describe('parseClientsCsv', () => {
     expect(rijen[0].errors).toContain('klantnaam ontbreekt');
   });
 
+  it('markeert een klantnaam met alleen witruimte als ontbrekend', () => {
+    const waarden = Array.from({ length: 12 }, () => '1000,50').join(',');
+    const csv = `${header}\n   ,jan@voorbeeld.nl,0612345678,Strandhuisje,Duinweg 1,2025-01,${waarden}`;
+
+    const rijen = parseClientsCsv(csv);
+    expect(rijen[0].errors).toContain('klantnaam ontbreekt');
+  });
+
   it('markeert een lege bezetting-cel als fout in plaats van deze stilzwijgend als 0 te lezen', () => {
     const waarden = ['1000,'].concat(Array.from({ length: 11 }, () => '1000,50')).join(',');
     const csv = `${header}\nJan Jansen,jan@voorbeeld.nl,0612345678,Strandhuisje,Duinweg 1,2025-01,${waarden}`;

@@ -60,9 +60,9 @@ export function parseClientsCsv(csvText: string): ParsedListingRow[] {
     const errors: string[] = [];
     let nulmeting: ParsedListingRow['nulmeting'] = [];
 
-    if (!row.klantnaam) errors.push('klantnaam ontbreekt');
-    if (!row.klant_email) errors.push('klant_email ontbreekt');
-    if (!row.accommodatienaam) errors.push('accommodatienaam ontbreekt');
+    if (!row.klantnaam?.trim()) errors.push('klantnaam ontbreekt');
+    if (!row.klant_email?.trim()) errors.push('klant_email ontbreekt');
+    if (!row.accommodatienaam?.trim()) errors.push('accommodatienaam ontbreekt');
 
     try {
       const maanden = berekenNulmetingMaanden(row.startmaand);
