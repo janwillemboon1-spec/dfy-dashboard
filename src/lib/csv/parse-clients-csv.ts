@@ -17,6 +17,9 @@ export interface ParsedListingRow {
   klantTelefoon: string;
   accommodatienaam: string;
   adres: string;
+  // omzet/bezetting kunnen 0 of NaN zijn als de brontekst leeg, witruimte of
+  // niet-numeriek was — controleer altijd eerst `errors` voordat je deze
+  // waarden vertrouwt of toont.
   nulmeting: { jaar: number; maand: number; omzet: number; bezetting: number }[];
   errors: string[];
 }
