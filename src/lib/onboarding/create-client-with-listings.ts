@@ -36,6 +36,8 @@ export async function createClientWithListings(input: OnboardingInput) {
     throw new OnboardingError(`Kon klant niet aanmaken: ${rpcError?.message}`);
   }
 
+  let authUserId: string | undefined;
+
   try {
     const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
       email: data.email,
@@ -45,6 +47,7 @@ export async function createClientWithListings(input: OnboardingInput) {
     if (authError || !authUser.user) {
       throw new OnboardingError(`Kon account niet aanmaken: ${authError?.message}`);
     }
+    authUserId = authUser.user.id;
 
     const { error: profileError } = await supabase.from('profiles').insert({
       id: authUser.user.id,
@@ -58,11 +61,44 @@ export async function createClientWithListings(input: OnboardingInput) {
       throw new OnboardingError(`Kon profiel niet aanmaken: ${profileError.message}`);
     }
 
-    await sendWelkomstmail({ naam: data.naam, email: data.email });
+    try {
+      await sendWelkomstmail({ naam: data.naam, email: data.email });
+    } catch (emailError) {
+      throw new OnboardingError(
+        `Kon welkomstmail niet versturen: ${(emailError as Error).message}`
+      );
+    }
 
     return { clientId };
   } catch (error) {
-    await supabase.rpc('delete_client_cascade', { target_client_id: clientId });
+    try {
+      const { error: cascadeError } = await supabase.rpc('delete_client_cascade', {
+        target_client_id: clientId,
+      });
+      if (cascadeError) {
+        console.error(
+          `[createClientWithListings] rollback van client ${clientId} is mislukt:`,
+          cascadeError
+        );
+      }
+    } catch (rollbackException) {
+      console.error(
+        `[createClientWithListings] rollback van client ${clientId} gooide een fout:`,
+        rollbackException
+      );
+    }
+
+    if (authUserId) {
+      const { error: deleteUserError } = await supabase.auth.admin.deleteUser(authUserId);
+      if (deleteUserError) {
+        console.error(
+          `[createClientWithListings] opruimen van auth user ${authUserId} is mislukt:`,
+          deleteUserError
+        );
+      }
+    }
+
+    console.error('[createClientWithListings] onboarding mislukt, oorspronkelijke fout:', error);
     throw error;
   }
 }

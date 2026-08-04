@@ -1,6 +1,14 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClientWithListings, OnboardingError } from '@/lib/onboarding/create-client-with-listings';
+
+// Gemockt zodat we deterministisch een fout NA het aanmaken van de auth user en het
+// profiel kunnen forceren, zonder afhankelijk te zijn van een echte (flaky) e-mailfout.
+vi.mock('@/lib/email/send-welkomstmail', () => ({
+  sendWelkomstmail: vi.fn().mockResolvedValue(undefined),
+}));
+
+import { sendWelkomstmail } from '@/lib/email/send-welkomstmail';
 
 const admin = createAdminClient();
 
@@ -65,5 +73,29 @@ describe('createClientWithListings', () => {
       .eq('client_id', eersteResult.clientId)
       .single();
     await admin.auth.admin.deleteUser(profile!.id);
+  });
+
+  it('ruimt zowel de client als de auth user op wanneer een stap na het aanmaken van de auth user faalt', async () => {
+    const email = `rollback-${Date.now()}@voorbeeld.nl`;
+    const input = { ...geldigeInput, email };
+
+    // Forceer een fout ná auth.admin.createUser() (die intern al is gelukt) en ná het
+    // profiel-insert, zodat we de opruim-paden voor zowel de client als de auth user
+    // dekken (finding #1: orphaned auth.users rij bij late fouten).
+    vi.mocked(sendWelkomstmail).mockRejectedValueOnce(new Error('SMTP timeout (test)'));
+
+    await expect(createClientWithListings(input)).rejects.toThrow(OnboardingError);
+
+    const { data: client } = await admin
+      .from('clients')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+    expect(client).toBeNull();
+
+    const { data: usersPage, error: listUsersError } = await admin.auth.admin.listUsers();
+    expect(listUsersError).toBeNull();
+    const orphanedAuthUser = usersPage?.users.find((u) => u.email === email);
+    expect(orphanedAuthUser).toBeUndefined();
   });
 });
