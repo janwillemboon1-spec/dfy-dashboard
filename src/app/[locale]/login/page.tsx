@@ -1,17 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-export default function LoginPage() {
+function LoginForm() {
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'versturen' | 'verstuurd' | 'mislukt'>('idle');
+  const [linkFout, setLinkFout] = useState(searchParams.get('fout') === '1');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setLinkFout(false);
     setStatus('versturen');
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOtp({
@@ -41,8 +45,19 @@ export default function LoginPage() {
         <Button type="submit" disabled={status === 'versturen'} className="w-full">
           {status === 'versturen' ? 'Versturen...' : 'Stuur inloglink'}
         </Button>
+        {linkFout && (
+          <p className="text-sm text-destructive">Deze link is verlopen of al gebruikt. Vraag een nieuwe aan.</p>
+        )}
         {status === 'mislukt' && <p className="text-sm text-destructive">Er ging iets mis, probeer het opnieuw.</p>}
       </form>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }
