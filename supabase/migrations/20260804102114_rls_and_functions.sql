@@ -1,3 +1,4 @@
+-- Helper functions (read-only, used by RLS policies)
 create or replace function is_admin()
 returns boolean
 language sql
@@ -19,6 +20,7 @@ as $$
   select client_id from profiles where id = auth.uid();
 $$;
 
+-- RPC functions for onboarding (Task 15 wiring pending) — service_role only, see execute grants below
 create or replace function create_client_with_listings(payload jsonb)
 returns uuid
 language plpgsql
@@ -66,6 +68,9 @@ begin
 end;
 $$;
 
+-- Note: this does NOT delete the corresponding auth.users row(s) — the FK cascade only
+-- runs profiles -> auth.users, not the reverse; auth user cleanup, if needed, must be
+-- handled explicitly by the caller.
 create or replace function delete_client_cascade(target_client_id uuid)
 returns void
 language sql
@@ -74,6 +79,16 @@ as $$
   delete from clients where id = target_client_id;
 $$;
 
+-- These RPCs run as security definer and bypass RLS entirely, so they must only be
+-- callable by trusted server-side code using the service-role key (see Task 15) — never
+-- directly by an anon or authenticated user session. Postgres grants EXECUTE on new
+-- functions to PUBLIC by default, so this must be explicitly revoked.
+revoke execute on function create_client_with_listings(jsonb) from public, anon, authenticated;
+revoke execute on function delete_client_cascade(uuid) from public, anon, authenticated;
+grant execute on function create_client_with_listings(jsonb) to service_role;
+grant execute on function delete_client_cascade(uuid) to service_role;
+
+-- Table privilege grants (environment requirement — see comment below)
 -- Note: this local Supabase Postgres image's default privileges for the `postgres`
 -- role (owner of these tables) only grant Dxtm (truncate/references/trigger/maintain)
 -- to anon/authenticated/service_role on new tables in schema public — not
@@ -86,6 +101,7 @@ grant select, insert, update, delete on
   clients, profiles, listings, nulmeting, pricelabs_listings_cache, action_log
   to anon, authenticated, service_role;
 
+-- Enable RLS + policies
 alter table clients enable row level security;
 alter table profiles enable row level security;
 alter table listings enable row level security;
