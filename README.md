@@ -22,10 +22,10 @@ via CSV.
 
 ### Prerequisites
 
-- Node.js (see `package.json` for engine requirements) and npm
+- Node.js 20+ (developed/tested with Node 24) and npm
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) running (Supabase's local stack runs in containers)
-- A [Resend](https://resend.com) API key (for sending real email locally you'd need this; the local Supabase
-  stack itself uses Mailpit for auth emails, see below)
+- A real, working [Resend](https://resend.com) API key **and** a Resend-verified sender email — these are
+  **required**, not optional, for local dev. See "Onboarding requires Resend" below.
 
 ### Setup
 
@@ -61,8 +61,23 @@ npm run dev
 
 Visit [http://localhost:3000](http://localhost:3000).
 
-Local auth emails (magic links, welkomstmail if not using a real Resend send) land in **Mailpit**, not your
-inbox — check `MAILPIT_URL` from `npx supabase status` (typically `http://127.0.0.1:54324`).
+### Onboarding requires Resend — it does not fall back to Mailpit
+
+Mailpit (`http://127.0.0.1:54324`, from `MAILPIT_URL` in `npx supabase status`) only catches Supabase's own
+built-in auth emails — in this app, that's the magic link sent by the plain `/login` re-login flow
+(`signInWithOtp`). That flow does **not** need Resend.
+
+The welkomstmail sent during onboarding is different: `sendWelkomstmail` (`src/lib/email/send-welkomstmail.ts`)
+calls the real Resend API directly (`new Resend(process.env.RESEND_API_KEY)`), bypassing Supabase's mailer
+entirely. It never touches Mailpit, locally or otherwise.
+
+This matters because `createClientWithListings` (`src/lib/onboarding/create-client-with-listings.ts`) treats a
+failed welkomstmail as a hard failure, not a skip: if `sendWelkomstmail` throws — e.g. because
+`RESEND_API_KEY`/`RESEND_FROM_EMAIL` are missing or not verified — the whole onboarding is rolled back (the
+just-created `clients` row is deleted via `delete_client_cascade` and the just-created `auth.users` row is
+deleted too). So a working `RESEND_API_KEY` and a Resend-verified `RESEND_FROM_EMAIL` are **required** for any
+onboarding flow — `/aanmelden`, admin "nieuw klant", or CSV import — to succeed locally. Without them,
+onboarding fails outright rather than degrading gracefully.
 
 ## Testing
 
@@ -76,11 +91,26 @@ Runs Vitest. Unit tests (`tests/unit/`) are pure and have no external dependenci
 
 ## Admin access
 
-There is no self-service admin signup. To get admin access:
+There is no self-service admin signup, and logging in does **not** create a `profiles` row for you — the only
+place in the codebase that inserts into `profiles` is the onboarding flow
+(`src/lib/onboarding/create-client-with-listings.ts`), which always inserts `role = 'klant'`. There is no
+database trigger that creates a `profiles` row on signup/login either: `signInWithOtp` (used by `/login`) only
+creates an `auth.users` row. So after logging in once via `/login`, you will have an `auth.users` entry but
+**no** row in `profiles` — there's nothing to edit yet. `profiles` is also RLS-protected (only an existing
+admin, or the row's own owner for reads, can touch it — see `supabase/migrations/20260804102114_rls_and_functions.sql`),
+so the very first admin can't be self-provisioned through the app at all. To get admin access:
 
-1. Log in once via `/login` with your email (this creates your `profiles` row via the auth flow).
-2. Open Supabase Studio (`http://127.0.0.1:54323` locally) and manually set `role = 'admin'` on your row in
-   the `profiles` table.
+1. Log in once via `/login` with your email. This creates your `auth.users` entry — find its `id` in Supabase
+   Studio (`http://127.0.0.1:54323` locally) under **Authentication → Users**.
+2. In Studio's **Table editor** or **SQL editor** (both run with elevated privileges that bypass RLS), manually
+   INSERT a new row into `profiles` with that `id` and `role = 'admin'`, e.g.:
+
+   ```sql
+   insert into profiles (id, email, naam, role)
+   values ('<your-auth-user-id>', 'you@example.com', 'Jouw Naam', 'admin');
+   ```
+
+   Leave `client_id` unset (`null`) — it's only used for `role = 'klant'` rows.
 
 ## Key routes
 
