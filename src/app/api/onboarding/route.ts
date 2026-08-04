@@ -3,7 +3,7 @@ import { createClientWithListings, OnboardingError } from '@/lib/onboarding/crea
 import { magPogingDoen } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
-  const ip = request.headers.get('x-forwarded-for') ?? 'onbekend';
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'onbekend';
   if (!magPogingDoen(ip)) {
     return NextResponse.json({ error: 'Te veel pogingen, probeer het later opnieuw.' }, { status: 429 });
   }

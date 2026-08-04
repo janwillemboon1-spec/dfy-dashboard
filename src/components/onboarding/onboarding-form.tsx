@@ -118,11 +118,23 @@ export function OnboardingForm() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <Label htmlFor={`accommodaties.${index}.naam`}>Naam</Label>
-                <Input {...form.register(`accommodaties.${index}.naam` as const)} />
+                <Input
+                  id={`accommodaties.${index}.naam`}
+                  aria-invalid={form.formState.errors.accommodaties?.[index]?.naam ? true : undefined}
+                  {...form.register(`accommodaties.${index}.naam` as const)}
+                />
+                {form.formState.errors.accommodaties?.[index]?.naam && (
+                  <p className="text-sm text-destructive">
+                    {form.formState.errors.accommodaties[index]?.naam?.message}
+                  </p>
+                )}
               </div>
               <div>
                 <Label htmlFor={`accommodaties.${index}.adres`}>Adres</Label>
-                <Input {...form.register(`accommodaties.${index}.adres` as const)} />
+                <Input
+                  id={`accommodaties.${index}.adres`}
+                  {...form.register(`accommodaties.${index}.adres` as const)}
+                />
               </div>
             </div>
             <NulmetingFields
