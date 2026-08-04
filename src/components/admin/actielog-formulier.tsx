@@ -11,13 +11,19 @@ export function ActielogFormulier({ listingId, clientId }: { listingId: string; 
   const [datum, setDatum] = useState(new Date().toISOString().slice(0, 10));
   const [omschrijving, setOmschrijving] = useState('');
   const [type, setType] = useState('overig');
+  const [foutmelding, setFoutmelding] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function versturen() {
     if (!omschrijving.trim()) return;
+    setFoutmelding(null);
     startTransition(async () => {
-      await voegActielogToe({ listingId, clientId, datum, omschrijving, type });
-      setOmschrijving('');
+      try {
+        await voegActielogToe({ listingId, clientId, datum, omschrijving, type });
+        setOmschrijving('');
+      } catch (error) {
+        setFoutmelding((error as Error).message);
+      }
     });
   }
 
@@ -42,6 +48,7 @@ export function ActielogFormulier({ listingId, clientId }: { listingId: string; 
         <Input value={omschrijving} onChange={(e) => setOmschrijving(e.target.value)} />
       </div>
       <Button size="sm" disabled={isPending || !omschrijving.trim()} onClick={versturen}>Toevoegen</Button>
+      {foutmelding && <p className="w-full text-sm text-destructive">{foutmelding}</p>}
     </div>
   );
 }

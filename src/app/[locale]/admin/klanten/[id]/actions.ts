@@ -18,7 +18,7 @@ export async function corrigeerNulmeting(input: {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const { error: updateError } = await supabase
+  const { data: updated, error: updateError } = await supabase
     .from('nulmeting')
     .update({
       omzet: input.omzet,
@@ -26,9 +26,19 @@ export async function corrigeerNulmeting(input: {
       laatst_gecorrigeerd_op: new Date().toISOString(),
       correctie_reden: input.reden,
     })
-    .eq('id', input.nulmetingId);
+    .eq('id', input.nulmetingId)
+    .select()
+    .single();
 
-  if (updateError) throw new Error(updateError.message);
+  if (updateError) {
+    if (updateError.code === 'PGRST116') {
+      throw new Error('Kon nulmeting niet vinden om te corrigeren.');
+    }
+    throw new Error(updateError.message);
+  }
+  if (!updated) {
+    throw new Error('Kon nulmeting niet vinden om te corrigeren.');
+  }
 
   const { error: logError } = await supabase.from('action_log').insert({
     listing_id: input.listingId,

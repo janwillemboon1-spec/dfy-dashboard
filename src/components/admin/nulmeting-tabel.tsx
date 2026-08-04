@@ -73,12 +73,18 @@ function CorrectieRij({
   const [omzet, setOmzet] = useState(rij.omzet);
   const [bezetting, setBezetting] = useState(rij.bezetting);
   const [reden, setReden] = useState('');
+  const [foutmelding, setFoutmelding] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function opslaan() {
+    setFoutmelding(null);
     startTransition(async () => {
-      await corrigeerNulmeting({ nulmetingId: rij.id, omzet, bezetting, reden, listingId, clientId });
-      onKlaar();
+      try {
+        await corrigeerNulmeting({ nulmetingId: rij.id, omzet, bezetting, reden, listingId, clientId });
+        onKlaar();
+      } catch (error) {
+        setFoutmelding((error as Error).message);
+      }
     });
   }
 
@@ -89,6 +95,7 @@ function CorrectieRij({
       <td><Input type="number" value={bezetting} onChange={(e) => setBezetting(Number(e.target.value))} /></td>
       <td className="space-y-1">
         <Input placeholder="Reden voor correctie" value={reden} onChange={(e) => setReden(e.target.value)} />
+        {foutmelding && <p className="text-sm text-destructive">{foutmelding}</p>}
         <div className="flex gap-1">
           <Button size="sm" disabled={!reden.trim() || isPending} onClick={opslaan}>Opslaan</Button>
           <Button size="sm" variant="ghost" onClick={onKlaar}>Annuleren</Button>
