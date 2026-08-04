@@ -1,0 +1,26 @@
+import 'server-only';
+import { Resend } from 'resend';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { welkomstmailHtml } from './templates/welkomstmail';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+export async function sendWelkomstmail({ naam, email }: { naam: string; email: string }) {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase.auth.admin.generateLink({
+    type: 'magiclink',
+    email,
+    options: { redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL}/auth/callback` },
+  });
+
+  if (error || !data.properties?.action_link) {
+    throw new Error(`Kon magic link niet genereren: ${error?.message}`);
+  }
+
+  await resend.emails.send({
+    from: process.env.RESEND_FROM_EMAIL!,
+    to: email,
+    subject: 'Welkom bij je Boon Vakantieverhuur dashboard',
+    html: welkomstmailHtml({ naam, magicLink: data.properties.action_link }),
+  });
+}
