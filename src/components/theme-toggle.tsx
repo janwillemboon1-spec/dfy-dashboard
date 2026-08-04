@@ -1,19 +1,28 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 
-export function ThemeToggle() {
-  const [mounted, setMounted] = useState(false);
-  const { theme, setTheme } = useTheme();
+// No-op subscribe: there's nothing to subscribe to, we only need
+// useSyncExternalStore's server/client snapshot split (see below).
+const subscribe = () => () => {};
 
-  // useEffect only runs on the client, so we can safely show theme-dependent
-  // UI once mounted, without risking a server/client hydration mismatch
+export function ThemeToggle() {
+  // useSyncExternalStore is React's recommended way to read a value that is
+  // known to differ between the server render and the client render
+  // (mount detection is exactly this case). It reports `false` for the
+  // SSR/hydration pass via getServerSnapshot and `true` once running on the
+  // client via getSnapshot, without calling setState from inside an effect
+  // (avoiding the react-hooks/set-state-in-effect cascading-render warning)
+  // while still avoiding a server/client hydration mismatch
   // (see https://github.com/pacocoursey/next-themes#avoid-hydration-mismatch).
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useSyncExternalStore(
+    subscribe,
+    () => true,
+    () => false
+  );
+  const { theme, setTheme } = useTheme();
 
   // Before mount, `theme` is undefined on both server and client renders.
   // Render a disabled placeholder that matches the server-rendered text
