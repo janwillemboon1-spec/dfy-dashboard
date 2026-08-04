@@ -4,7 +4,7 @@ create type profile_role as enum ('admin', 'klant');
 create table clients (
   id uuid primary key default gen_random_uuid(),
   naam text not null,
-  email text not null unique,
+  email text not null,
   telefoon text,
   status client_status not null default 'onboarding',
   aangemaakt_op timestamptz not null default now()
@@ -63,6 +63,7 @@ create table action_log (
   aangemaakt_op timestamptz not null default now()
 );
 
+create unique index clients_email_lower_idx on clients (lower(email));
 create index listings_client_id_idx on listings(client_id);
 create index nulmeting_listing_id_idx on nulmeting(listing_id);
 create index action_log_listing_id_idx on action_log(listing_id);
