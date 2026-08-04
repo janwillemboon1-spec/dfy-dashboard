@@ -11,6 +11,7 @@ export default function ImportPage() {
   const [actielogRijen, setActielogRijen] = useState<ParsedActielogRow[]>([]);
   const [resultaten, setResultaten] = useState<ImportResultaat[] | null>(null);
   const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState<string | null>(null);
 
   async function onKlantBestand(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -29,12 +30,18 @@ export default function ImportPage() {
 
   async function bevestigImport() {
     setBezig(true);
-    const klantResultaten = await importeerKlanten(geldigeKlantRijen);
-    const actielogResultaten = actielogRijen.length
-      ? await importeerActielog(actielogRijen.filter((r) => r.errors.length === 0))
-      : [];
-    setResultaten([...klantResultaten, ...actielogResultaten]);
-    setBezig(false);
+    setFout(null);
+    try {
+      const klantResultaten = await importeerKlanten(geldigeKlantRijen);
+      const actielogResultaten = actielogRijen.length
+        ? await importeerActielog(actielogRijen.filter((r) => r.errors.length === 0))
+        : [];
+      setResultaten([...klantResultaten, ...actielogResultaten]);
+    } catch (error) {
+      setFout(error instanceof Error ? error.message : 'Onbekende fout bij importeren.');
+    } finally {
+      setBezig(false);
+    }
   }
 
   return (
@@ -73,6 +80,8 @@ export default function ImportPage() {
       <Button disabled={geldigeKlantRijen.length === 0 || bezig} onClick={bevestigImport}>
         {bezig ? 'Bezig...' : `Importeer ${geldigeKlantRijen.length} accommodatie(s)`}
       </Button>
+
+      {fout && <p className="text-sm text-destructive">{fout}</p>}
 
       {resultaten && (
         <section>
