@@ -9,6 +9,7 @@ export interface ImportResultaat {
   rowIndex: number;
   succes: boolean;
   fout?: string;
+  bron: 'klant' | 'actielog';
 }
 
 export async function importeerKlanten(rijen: ParsedListingRow[]): Promise<ImportResultaat[]> {
@@ -23,6 +24,24 @@ export async function importeerKlanten(rijen: ParsedListingRow[]): Promise<Impor
 
   for (const [, klantRijen] of perKlant) {
     const eerste = klantRijen[0];
+
+    // Rijen voor dezelfde klant-e-mail moeten dezelfde klantnaam/telefoon
+    // hebben — anders weten we niet welke waarde klopt (bv. een typfout in
+    // één van de rijen) en importeren we liever niets dan de verkeerde naam.
+    const afwijkendeRij = klantRijen.find(
+      (rij) =>
+        rij.klantnaam.trim() !== eerste.klantnaam.trim() ||
+        rij.klantTelefoon.trim() !== eerste.klantTelefoon.trim()
+    );
+
+    if (afwijkendeRij) {
+      const fout = `Klantnaam komt niet overeen tussen rijen voor ${eerste.klantEmail} — corrigeer de CSV en probeer opnieuw.`;
+      klantRijen.forEach((rij) =>
+        resultaten.push({ rowIndex: rij.rowIndex, succes: false, fout, bron: 'klant' })
+      );
+      continue;
+    }
+
     try {
       await createClientWithListings({
         naam: eerste.klantnaam,
@@ -35,13 +54,16 @@ export async function importeerKlanten(rijen: ParsedListingRow[]): Promise<Impor
         })),
         honeypot: '',
       });
-      klantRijen.forEach((rij) => resultaten.push({ rowIndex: rij.rowIndex, succes: true }));
+      klantRijen.forEach((rij) =>
+        resultaten.push({ rowIndex: rij.rowIndex, succes: true, bron: 'klant' })
+      );
     } catch (error) {
       klantRijen.forEach((rij) =>
         resultaten.push({
           rowIndex: rij.rowIndex,
           succes: false,
           fout: error instanceof OnboardingError ? error.message : 'Onbekende fout',
+          bron: 'klant',
         })
       );
     }
@@ -55,20 +77,36 @@ export async function importeerActielog(rijen: ParsedActielogRow[]): Promise<Imp
   const resultaten: ImportResultaat[] = [];
 
   for (const rij of rijen) {
-    const { data: listing } = await supabase
+    // Geen uniqueness-constraint op listings.naam, dus er kunnen meerdere
+    // accommodaties (van verschillende klanten) exact dezelfde naam hebben.
+    // .maybeSingle() zou daar een verwarrende fout op geven — we vragen
+    // daarom alle matches op en behandelen 0/1/2+ resultaten expliciet.
+    const { data: listings } = await supabase
       .from('listings')
       .select('id')
-      .eq('naam', rij.accommodatienaam)
-      .maybeSingle();
+      .eq('naam', rij.accommodatienaam);
 
-    if (!listing) {
+    if (!listings || listings.length === 0) {
       resultaten.push({
         rowIndex: rij.rowIndex,
         succes: false,
         fout: `Geen accommodatie gevonden met naam "${rij.accommodatienaam}"`,
+        bron: 'actielog',
       });
       continue;
     }
+
+    if (listings.length > 1) {
+      resultaten.push({
+        rowIndex: rij.rowIndex,
+        succes: false,
+        fout: `Meerdere accommodaties gevonden met naam "${rij.accommodatienaam}" — koppel deze actielog-rij handmatig via de klantdetailpagina.`,
+        bron: 'actielog',
+      });
+      continue;
+    }
+
+    const listing = listings[0];
 
     const { error } = await supabase.from('action_log').insert({
       listing_id: listing.id,
@@ -77,7 +115,7 @@ export async function importeerActielog(rijen: ParsedActielogRow[]): Promise<Imp
       type: rij.type,
     });
 
-    resultaten.push({ rowIndex: rij.rowIndex, succes: !error, fout: error?.message });
+    resultaten.push({ rowIndex: rij.rowIndex, succes: !error, fout: error?.message, bron: 'actielog' });
   }
 
   return resultaten;

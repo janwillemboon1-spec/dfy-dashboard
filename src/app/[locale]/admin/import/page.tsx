@@ -80,7 +80,7 @@ export default function ImportPage() {
           <ul className="text-sm space-y-1">
             {resultaten.map((r, i) => (
               <li key={i} className={r.succes ? 'text-green-600' : 'text-destructive'}>
-                Rij {r.rowIndex}: {r.succes ? 'gelukt' : r.fout}
+                {r.bron === 'klant' ? 'Klanten-CSV' : 'Actielog-CSV'}, rij {r.rowIndex}: {r.succes ? 'gelukt' : r.fout}
               </li>
             ))}
           </ul>
