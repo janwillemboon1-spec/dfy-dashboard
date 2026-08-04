@@ -125,12 +125,23 @@ export function OnboardingForm() {
                 <Input {...form.register(`accommodaties.${index}.adres` as const)} />
               </div>
             </div>
-            <NulmetingFields register={form.register} accommodatieIndex={index} />
+            <NulmetingFields
+              register={form.register}
+              errors={form.formState.errors}
+              accommodatieIndex={index}
+            />
           </div>
         ))}
       </section>
 
       {foutmelding && <p className="text-sm text-destructive">{foutmelding}</p>}
+
+      {status !== 'versturen' &&
+        Object.keys(form.formState.errors).length > 0 && (
+          <p className="text-sm text-destructive">
+            Controleer de gemarkeerde velden hierboven — er staat nog een fout in het formulier.
+          </p>
+        )}
 
       <Button type="submit" disabled={status === 'versturen'} className="w-full sm:w-auto">
         {status === 'versturen' ? 'Versturen...' : 'Versturen'}
