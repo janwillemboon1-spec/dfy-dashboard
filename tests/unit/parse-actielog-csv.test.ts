@@ -64,4 +64,34 @@ describe('parseActielogCsv', () => {
     expect(rijen[0].errors).toContain('datum is ongeldig');
     expect(rijen[0].errors).toHaveLength(2);
   });
+
+  it('markeert een kaal jaartal als ongeldige datum', () => {
+    const csv = 'accommodatienaam,datum,omschrijving,type\nStrandhuisje,2025,Nieuwe fotos geplaatst,foto';
+    const rijen = parseActielogCsv(csv);
+    expect(rijen[0].errors).toContain('datum is ongeldig');
+  });
+
+  it('markeert een kalendarisch ongeldige ISO-datum (30 februari) als ongeldig', () => {
+    const csv = 'accommodatienaam,datum,omschrijving,type\nStrandhuisje,2025-02-30,Nieuwe fotos geplaatst,foto';
+    const rijen = parseActielogCsv(csv);
+    expect(rijen[0].errors).toContain('datum is ongeldig');
+  });
+
+  it('markeert een datum in slash-formaat (DD/MM/JJJJ) als ongeldig', () => {
+    const csv = 'accommodatienaam,datum,omschrijving,type\nStrandhuisje,05/03/2025,Nieuwe fotos geplaatst,foto';
+    const rijen = parseActielogCsv(csv);
+    expect(rijen[0].errors).toContain('datum is ongeldig');
+  });
+
+  it('accepteert een geldige schrikkeldag (2024-02-29)', () => {
+    const csv = 'accommodatienaam,datum,omschrijving,type\nStrandhuisje,2024-02-29,Nieuwe fotos geplaatst,foto';
+    const rijen = parseActielogCsv(csv);
+    expect(rijen[0].errors).not.toContain('datum is ongeldig');
+  });
+
+  it('markeert 29 februari in een niet-schrikkeljaar (2025) als ongeldig', () => {
+    const csv = 'accommodatienaam,datum,omschrijving,type\nStrandhuisje,2025-02-29,Nieuwe fotos geplaatst,foto';
+    const rijen = parseActielogCsv(csv);
+    expect(rijen[0].errors).toContain('datum is ongeldig');
+  });
 });
