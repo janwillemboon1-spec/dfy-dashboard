@@ -9,7 +9,11 @@ export async function sendWelkomstmail({ naam, email }: { naam: string; email: s
   const { data, error } = await supabase.auth.admin.generateLink({
     type: 'magiclink',
     email,
-    options: { redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL}/auth/callback` },
+    // generateLink() produces an implicit-flow link (tokens in the URL fragment), which
+    // can only be completed client-side — see src/app/auth/confirm/page.tsx. This is
+    // deliberately NOT /auth/callback, which handles the separate PKCE ?code= flow used
+    // by the browser-initiated signInWithOtp() on /login.
+    options: { redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL}/auth/confirm` },
   });
 
   if (error || !data.properties?.action_link) {
