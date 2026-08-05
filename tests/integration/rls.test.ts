@@ -58,7 +58,7 @@ beforeAll(async () => {
 
   const { data: klantBListing } = await admin
     .from('listings')
-    .insert({ client_id: clientBId, naam: 'Klant B Listing' })
+    .insert({ client_id: clientBId, naam: 'Klant B Listing', pricelabs_listing_id: 'pl-rls-test-eigen' })
     .select()
     .single();
   klantBListingId = klantBListing!.id;
@@ -66,12 +66,23 @@ beforeAll(async () => {
   await admin
     .from('monthly_actuals')
     .insert({ listing_id: klantBListingId, jaar: 2025, maand: 1, omzet: 1000, bezetting: 50 });
+
+  // Eén cache-rij die hoort bij klant B's eigen koppeling, en één die nergens aan
+  // gekoppeld is (simuleert een andere klant se listing in dezelfde gedeelde cache).
+  await admin
+    .from('pricelabs_listings_cache')
+    .insert({ pricelabs_listing_id: 'pl-rls-test-eigen', naam: 'Eigen PL-listing', pms: 'hostaway' });
+  await admin
+    .from('pricelabs_listings_cache')
+    .insert({ pricelabs_listing_id: 'pl-rls-test-ander', naam: 'Andermans PL-listing', pms: 'hostaway' });
 });
 
 afterAll(async () => {
   await admin.from('clients').delete().eq('id', clientAId);
   await admin.from('clients').delete().eq('id', clientBId);
   await admin.auth.admin.deleteUser(klantBUserId);
+  await admin.from('pricelabs_listings_cache').delete().eq('pricelabs_listing_id', 'pl-rls-test-eigen');
+  await admin.from('pricelabs_listings_cache').delete().eq('pricelabs_listing_id', 'pl-rls-test-ander');
 });
 
 describe('RLS: klant-isolatie', () => {
@@ -83,13 +94,24 @@ describe('RLS: klant-isolatie', () => {
     expect(data).toEqual([]);
   });
 
-  it('klant B kan de pricelabs_listings_cache niet lezen', async () => {
+  it('klant B leest alleen de pricelabs_listings_cache-rij van de eigen koppeling, niet de rest van de cache', async () => {
     const klantClient = createClient(url, anonKey);
     await klantClient.auth.signInWithPassword({ email: klantBEmail, password: klantBWachtwoord });
 
-    const { data, error } = await klantClient.from('pricelabs_listings_cache').select('*');
-    expect(data).toEqual([]);
-    expect(error).toBeNull();
+    const eigen = await klantClient
+      .from('pricelabs_listings_cache')
+      .select('*')
+      .eq('pricelabs_listing_id', 'pl-rls-test-eigen');
+    expect(eigen.error).toBeNull();
+    expect(eigen.data).toHaveLength(1);
+    expect(eigen.data![0]).toMatchObject({ pricelabs_listing_id: 'pl-rls-test-eigen', pms: 'hostaway' });
+
+    const ander = await klantClient
+      .from('pricelabs_listings_cache')
+      .select('*')
+      .eq('pricelabs_listing_id', 'pl-rls-test-ander');
+    expect(ander.data).toEqual([]);
+    expect(ander.error).toBeNull();
   });
 
   it('klant B kan monthly_actuals voor de eigen listing lezen, sinds de Fase 2b-koppeling', async () => {
