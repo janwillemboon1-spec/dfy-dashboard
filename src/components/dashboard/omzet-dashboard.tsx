@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { syncEigenListings } from '@/app/[locale]/dashboard/actions';
 import { Button } from '@/components/ui/button';
 import { KpiKaarten } from './kpi-kaarten';
@@ -53,18 +53,45 @@ export function OmzetDashboard() {
   const [vergelijkModus, setVergelijkModus] = useState<'stly' | 'nulmeting'>('stly');
   const [data, setData] = useState<OmzetData | null>(null);
   const [laden, setLaden] = useState(true);
+  const [dataFoutmelding, setDataFoutmelding] = useState<string | null>(null);
   const [syncFoutmelding, setSyncFoutmelding] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  // Voorkomt dat een trage response een snellere overschrijft wanneer de klant snel
+  // van periode wisselt of tijdens het laden op "synchroniseren" klikt: alleen de
+  // laatst gestarte aanvraag mag nog state zetten.
+  const laatsteAanvraagId = useRef(0);
 
   const laadData = useCallback(() => {
-    if (periodeId === 'eigen' && (!eigenStart || !eigenEind)) return;
+    if (periodeId === 'eigen') {
+      if (!eigenStart || !eigenEind) return;
+      if (eigenStart > eigenEind) {
+        setDataFoutmelding('De startdatum mag niet na de einddatum liggen.');
+        return;
+      }
+    }
+    const aanvraagId = ++laatsteAanvraagId.current;
     setLaden(true);
+    setDataFoutmelding(null);
     const { start, eind } = berekenPeriode(periodeId, eigenStart, eigenEind);
     const periodeType = periodeId === 'eigen' ? 'eigen' : 'vast';
     fetch(`/api/dashboard/omzet?start=${start}&eind=${eind}&periodeType=${periodeType}`)
-      .then((r) => r.json())
-      .then(setData)
-      .finally(() => setLaden(false));
+      .then(async (r) => {
+        const body = await r.json();
+        if (!r.ok) throw new Error(body?.error ?? 'Ophalen van omzetdata is mislukt.');
+        return body as OmzetData;
+      })
+      .then((body) => {
+        if (aanvraagId !== laatsteAanvraagId.current) return;
+        setData(body);
+      })
+      .catch((fout: Error) => {
+        if (aanvraagId !== laatsteAanvraagId.current) return;
+        setDataFoutmelding(fout.message);
+      })
+      .finally(() => {
+        if (aanvraagId !== laatsteAanvraagId.current) return;
+        setLaden(false);
+      });
   }, [periodeId, eigenStart, eigenEind]);
 
   useEffect(() => {
@@ -84,8 +111,24 @@ export function OmzetDashboard() {
         setSyncFoutmelding(resultaat.fout ?? 'Onbekende fout bij synchroniseren.');
         return;
       }
+      // succes: true betekent alleen dat de actie zelf niet is vastgelopen — niet dat
+      // elke listing gelukt is (zie het commentaar bij syncEigenListings). Als alle
+      // rijen individueel faalden, is dat voor de klant net zo goed een mislukte sync.
+      const rijen = resultaat.resultaten ?? [];
+      if (rijen.length > 0 && rijen.every((rij) => !rij.succes)) {
+        setSyncFoutmelding(rijen[0].fout ?? 'Synchroniseren is voor geen enkele accommodatie gelukt.');
+        return;
+      }
       laadData();
     });
+  }
+
+  function kiesPeriode(id: PeriodeId) {
+    setPeriodeId(id);
+    // De nulmeting-vergelijking bestaat alleen voor vaste periodes (periodeType=vast) —
+    // bij "Eigen periode" geeft de API altijd portfolioNulmeting: null terug. Zonder
+    // deze reset blijft de Nulmeting-knop optisch actief terwijl hij niets vergelijkt.
+    if (id === 'eigen') setVergelijkModus('stly');
   }
 
   const nulmetingBeschikbaar = periodeId !== 'eigen';
@@ -97,7 +140,7 @@ export function OmzetDashboard() {
           {PERIODES.map((p) => (
             <button
               key={p.id}
-              onClick={() => setPeriodeId(p.id)}
+              onClick={() => kiesPeriode(p.id)}
               className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${periodeId === p.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'}`}
             >
               {p.label}
@@ -108,7 +151,7 @@ export function OmzetDashboard() {
           <button
             onClick={() => setVergelijkModus('stly')}
             disabled={!nulmetingBeschikbaar && vergelijkModus === 'stly'}
-            className={`text-xs px-2 py-1 rounded ${vergelijkModus === 'stly' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
+            className={`text-xs px-2 py-1 rounded disabled:opacity-40 ${vergelijkModus === 'stly' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
           >
             STLY
           </button>
@@ -135,9 +178,11 @@ export function OmzetDashboard() {
         </div>
       )}
 
-      {laden || !data ? (
+      {dataFoutmelding && <p className="text-sm text-destructive">{dataFoutmelding}</p>}
+
+      {laden ? (
         <p className="text-sm text-muted-foreground animate-pulse">Omzetdata ophalen...</p>
-      ) : (
+      ) : !data ? null : (
         <div className="space-y-8">
           <KpiKaarten
             huidig={data.portfolio}
