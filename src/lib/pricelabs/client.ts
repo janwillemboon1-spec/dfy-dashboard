@@ -20,10 +20,13 @@ export interface PricelabsReservering {
   check_in: string;
   check_out: string;
   rental_revenue: string;
-  total_cost: string;
+  // Nullable, in tegenstelling tot rental_revenue: rechtstreeks-Airbnb-gekoppelde
+  // listings (pms=airbnb) geven geen booking_channel terug, en total_cost ontbreekt
+  // in dezelfde gevallen — geverifieerd tegen het echte PriceLabs-account.
+  total_cost: string | null;
   no_of_days: number;
   booking_status: string;
-  booking_channel: string;
+  booking_channel: string | null;
 }
 
 function apiKeyHeader(): HeadersInit {
