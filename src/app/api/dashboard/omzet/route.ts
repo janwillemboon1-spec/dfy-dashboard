@@ -7,47 +7,87 @@ function shiftJaar(datum: string, jaren: number): string {
   return datum.replace(/^(\d{4})/, (jaarStr) => String(Number(jaarStr) + jaren));
 }
 
+const ISO_DATUM = /^\d{4}-\d{2}-\d{2}$/;
+
+// PostgREST's max_rows staat op 1000 (supabase/config.toml) — geen paginering op de
+// reserveringen-queries hieronder, dus een resultaat van precies 1000 rijen is een
+// signaal dat de data mogelijk afgekapt is i.p.v. compleet. Geen harde fout (de
+// dashboardcijfers zijn dan nog steeds bruikbaar, alleen mogelijk een onderschatting),
+// wel zichtbaar loggen zodat dit opvalt vóórdat een klant het zelf meldt.
+const MAX_RIJEN_PER_QUERY = 1000;
+function waarschuwBijMogelijkeAfkapping(label: string, rijen: unknown[] | null): void {
+  if ((rijen?.length ?? 0) >= MAX_RIJEN_PER_QUERY) {
+    console.warn(`[api/dashboard/omzet] ${label}: ${rijen!.length} rijen opgehaald — mogelijk afgekapt door PostgREST's max_rows.`);
+  }
+}
+
 // Geen expliciet client_id-filter nodig op onderstaande queries: de RLS-policies
 // ("klant leest eigen listings/reserveringen") scopen dit al af tot precies de data
-// van de ingelogde klant, zelfde patroon als src/app/[locale]/dashboard/page.tsx.
+// van de ingelogde klant, zelfde patroon als src/app/[locale]/dashboard/page.tsx. Dat
+// patroon werkt alléén omdat admin-sessies hieronder expliciet geweigerd worden — voor
+// role=admin laten de "admin volledige toegang ..."-policies namelijk juist alles
+// ongefilterd door (zie de admin-redirect + toelichting in dashboard/page.tsx voor de
+// achtergrond van precies dit risico).
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Niet ingelogd.' }, { status: 401 });
 
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle();
+  if (profileError) return NextResponse.json({ error: profileError.message }, { status: 500 });
+  if (profile?.role === 'admin') {
+    return NextResponse.json({ error: 'Dit endpoint is alleen voor klant-sessies.' }, { status: 403 });
+  }
+
   const url = new URL(request.url);
   const start = url.searchParams.get('start');
   const eind = url.searchParams.get('eind');
-  const periodeType = url.searchParams.get('periodeType') === 'eigen' ? 'eigen' : 'vast';
+  // Faalt dicht: alleen de letterlijke waarde "vast" schakelt de nulmeting-vergelijking
+  // in. Een ontbrekende/verkeerd gespelde/toekomstige param-waarde onderdrukt 'm dus
+  // (portfolioNulmeting/nulmeting = null) i.p.v. per ongeluk een misleidende
+  // nulmeting-vergelijking te berekenen tegen een periode die daar niet voor bedoeld is.
+  const periodeType = url.searchParams.get('periodeType') === 'vast' ? 'vast' : 'eigen';
 
   if (!start || !eind) {
     return NextResponse.json({ error: 'start en eind zijn verplicht.' }, { status: 400 });
+  }
+  if (!ISO_DATUM.test(start) || !ISO_DATUM.test(eind)) {
+    return NextResponse.json({ error: 'start en eind moeten het formaat JJJJ-MM-DD hebben.' }, { status: 400 });
   }
   if (start > eind) {
     return NextResponse.json({ error: 'start mag niet na eind liggen.' }, { status: 400 });
   }
 
-  const { data: listings, error: listingsError } = await supabase
-    .from('listings')
-    .select('id, naam, nulmeting(jaar, maand, omzet, bezetting)');
-  if (listingsError) return NextResponse.json({ error: listingsError.message }, { status: 500 });
-
   const stlyStart = shiftJaar(start, -1);
   const stlyEind = shiftJaar(eind, -1);
 
-  const { data: huidigeRijen, error: huidigeError } = await supabase
-    .from('pricelabs_reserveringen_cache')
-    .select('listing_id, check_in, check_out, rental_revenue, total_cost, no_of_days, booking_status, booking_channel')
-    .gte('check_in', start)
-    .lte('check_in', eind);
+  const [
+    { data: listings, error: listingsError },
+    { data: huidigeRijen, error: huidigeError },
+    { data: stlyRijen, error: stlyError },
+  ] = await Promise.all([
+    supabase.from('listings').select('id, naam, nulmeting(jaar, maand, omzet, bezetting)'),
+    supabase
+      .from('pricelabs_reserveringen_cache')
+      .select('listing_id, check_in, check_out, rental_revenue, total_cost, no_of_days, booking_status, booking_channel')
+      .gte('check_in', start)
+      .lte('check_in', eind),
+    supabase
+      .from('pricelabs_reserveringen_cache')
+      .select('listing_id, check_in, check_out, rental_revenue, total_cost, no_of_days, booking_status, booking_channel')
+      .gte('check_in', stlyStart)
+      .lte('check_in', stlyEind),
+  ]);
+  if (listingsError) return NextResponse.json({ error: listingsError.message }, { status: 500 });
   if (huidigeError) return NextResponse.json({ error: huidigeError.message }, { status: 500 });
-
-  const { data: stlyRijen, error: stlyError } = await supabase
-    .from('pricelabs_reserveringen_cache')
-    .select('listing_id, check_in, check_out, rental_revenue, total_cost, no_of_days, booking_status, booking_channel')
-    .gte('check_in', stlyStart)
-    .lte('check_in', stlyEind);
   if (stlyError) return NextResponse.json({ error: stlyError.message }, { status: 500 });
+
+  waarschuwBijMogelijkeAfkapping('huidige periode', huidigeRijen);
+  waarschuwBijMogelijkeAfkapping('STLY-periode', stlyRijen);
 
   const aantalListings = listings?.length ?? 0;
   const dagen = dagenInPeriode(start, eind);
@@ -103,6 +143,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     periode: { start, eind, stlyStart, stlyEind },
+    periodeType,
     portfolio,
     portfolioStly,
     portfolioNulmeting,
