@@ -14,7 +14,7 @@ create table monthly_actuals (
   jaar int not null,
   maand int not null check (maand between 1 and 12),
   omzet numeric(10,2) not null,
-  bezetting numeric(5,2) not null,
+  bezetting numeric(5,2) not null check (bezetting between 0 and 100),
   laatst_gesynchroniseerd timestamptz not null default now(),
   unique (listing_id, jaar, maand)
 );
