@@ -2,7 +2,7 @@
 
 import { createClientWithListings, OnboardingError } from '@/lib/onboarding/create-client-with-listings';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { createClient } from '@/lib/supabase/server';
+import { assertIsAdmin } from '@/lib/auth/assert-admin';
 import type { ParsedListingRow } from '@/lib/csv/parse-clients-csv';
 import type { ParsedActielogRow } from '@/lib/csv/parse-actielog-csv';
 
@@ -11,34 +11,6 @@ export interface ImportResultaat {
   succes: boolean;
   fout?: string;
   bron: 'klant' | 'actielog';
-}
-
-// Beide importfuncties hieronder gebruiken createAdminClient() (service-role,
-// omzeilt RLS volledig) omdat ze klantnamen/listings across alle klanten
-// moeten kunnen opzoeken en aanmaken. Anders dan bv. klanten/[id]/actions.ts
-// (die de RLS-scoped createClient() gebruikt en dus al een backstop van
-// Postgres RLS heeft) hebben deze functies dus GEEN databaselaag die een
-// niet-admin tegenhoudt als de server action rechtstreeks aangeroepen wordt
-// (bv. buiten de /admin route-middleware om). Vandaar deze expliciete check.
-async function assertIsAdmin(): Promise<void> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    throw new Error('Niet geautoriseerd.');
-  }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle();
-
-  if (profile?.role !== 'admin') {
-    throw new Error('Niet geautoriseerd.');
-  }
 }
 
 export async function importeerKlanten(rijen: ParsedListingRow[]): Promise<ImportResultaat[]> {
