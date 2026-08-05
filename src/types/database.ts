@@ -144,6 +144,44 @@ export type Database = {
           },
         ]
       }
+      monthly_actuals: {
+        Row: {
+          bezetting: number
+          id: string
+          jaar: number
+          laatst_gesynchroniseerd: string
+          listing_id: string
+          maand: number
+          omzet: number
+        }
+        Insert: {
+          bezetting: number
+          id?: string
+          jaar: number
+          laatst_gesynchroniseerd?: string
+          listing_id: string
+          maand: number
+          omzet: number
+        }
+        Update: {
+          bezetting?: number
+          id?: string
+          jaar?: number
+          laatst_gesynchroniseerd?: string
+          listing_id?: string
+          maand?: number
+          omzet?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_actuals_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nulmeting: {
         Row: {
           bezetting: number
@@ -194,6 +232,7 @@ export type Database = {
           id: string
           laatst_gesynchroniseerd: string | null
           naam: string
+          pms: string | null
           pricelabs_listing_id: string
         }
         Insert: {
@@ -201,6 +240,7 @@ export type Database = {
           id?: string
           laatst_gesynchroniseerd?: string | null
           naam: string
+          pms?: string | null
           pricelabs_listing_id: string
         }
         Update: {
@@ -208,6 +248,7 @@ export type Database = {
           id?: string
           laatst_gesynchroniseerd?: string | null
           naam?: string
+          pms?: string | null
           pricelabs_listing_id?: string
         }
         Relationships: []
