@@ -12,6 +12,7 @@ const klantBWachtwoord = 'test-wachtwoord-1234';
 let clientAId: string;
 let clientBId: string;
 let klantBUserId: string;
+let klantBListingId: string;
 
 beforeAll(async () => {
   const { data: clientA } = await admin
@@ -42,6 +43,17 @@ beforeAll(async () => {
     email: klantBEmail,
     naam: 'Klant B',
   });
+
+  const { data: klantBListing } = await admin
+    .from('listings')
+    .insert({ client_id: clientBId, naam: 'Klant B Listing' })
+    .select()
+    .single();
+  klantBListingId = klantBListing!.id;
+
+  await admin
+    .from('monthly_actuals')
+    .insert({ listing_id: klantBListingId, jaar: 2025, maand: 1, omzet: 1000, bezetting: 50 });
 });
 
 afterAll(async () => {
@@ -64,6 +76,18 @@ describe('RLS: klant-isolatie', () => {
     await klantClient.auth.signInWithPassword({ email: klantBEmail, password: klantBWachtwoord });
 
     const { data, error } = await klantClient.from('pricelabs_listings_cache').select('*');
+    expect(data).toEqual([]);
+    expect(error).toBeNull();
+  });
+
+  it('klant B kan monthly_actuals niet lezen, ook niet voor de eigen listing', async () => {
+    const klantClient = createClient(url, anonKey);
+    await klantClient.auth.signInWithPassword({ email: klantBEmail, password: klantBWachtwoord });
+
+    const { data, error } = await klantClient
+      .from('monthly_actuals')
+      .select('*')
+      .eq('listing_id', klantBListingId);
     expect(data).toEqual([]);
     expect(error).toBeNull();
   });

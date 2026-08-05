@@ -23,7 +23,15 @@ export interface PricelabsReservering {
 }
 
 function apiKeyHeader(): HeadersInit {
-  return { 'X-API-Key': process.env.PRICELABS_API_KEY! };
+  const apiKey = process.env.PRICELABS_API_KEY;
+  if (!apiKey) {
+    // Faalt hier expliciet i.p.v. de non-null assertion een lege header te laten
+    // sturen: dat zou anders per listing een cryptische 401 opleveren i.p.v. één
+    // duidelijke melding — met name relevant voor de losse cron-service (Taak 11),
+    // die deze env var apart van de hoofdservice geconfigureerd moet krijgen.
+    throw new Error('PRICELABS_API_KEY ontbreekt — controleer de env vars van deze service.');
+  }
+  return { 'X-API-Key': apiKey };
 }
 
 export async function fetchAllListings(): Promise<PricelabsListing[]> {
