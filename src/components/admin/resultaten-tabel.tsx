@@ -17,13 +17,19 @@ interface ActueleRij {
 export function ResultatenTabel({
   nulmeting,
   actueel,
+  pricelabsListingId,
 }: {
   nulmeting: NulmetingRij[];
   actueel: ActueleRij[];
+  pricelabsListingId: string | null;
 }) {
   const actueelPerMaand = new Map(actueel.map((rij) => [`${rij.jaar}-${rij.maand}`, rij]));
   const gesorteerd = [...nulmeting].sort((a, b) => a.jaar - b.jaar || a.maand - b.maand);
 
+  // Zonder koppeling is er sowieso niets gesynchroniseerd — een tabel vol streepjes
+  // zou dan niet te onderscheiden zijn van "wel gekoppeld, nog niet gesynchroniseerd".
+  // PricelabsKoppeling (hierboven op de pagina) toont de koppelstatus al.
+  if (!pricelabsListingId) return null;
   if (gesorteerd.length === 0) return null;
 
   return (

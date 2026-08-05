@@ -41,7 +41,11 @@ export default async function KlantDetailPage({ params }: { params: Promise<{ id
           />
 
           <NulmetingTabel listingId={listing.id} clientId={id} rijen={listing.nulmeting ?? []} />
-          <ResultatenTabel nulmeting={listing.nulmeting ?? []} actueel={listing.monthly_actuals ?? []} />
+          <ResultatenTabel
+            nulmeting={listing.nulmeting ?? []}
+            actueel={listing.monthly_actuals ?? []}
+            pricelabsListingId={listing.pricelabs_listing_id}
+          />
           <ActielogFormulier listingId={listing.id} clientId={id} />
 
           <ul className="space-y-1 text-sm">
