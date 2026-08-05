@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { NulmetingTabel } from '@/components/admin/nulmeting-tabel';
+import { ResultatenTabel } from '@/components/admin/resultaten-tabel';
 import { ActielogFormulier } from '@/components/admin/actielog-formulier';
 import { PricelabsKoppeling } from '@/components/admin/pricelabs-koppeling';
 
@@ -13,7 +14,7 @@ export default async function KlantDetailPage({ params }: { params: Promise<{ id
 
   const { data: listings } = await supabase
     .from('listings')
-    .select('*, nulmeting(*), action_log(*)')
+    .select('*, nulmeting(*), action_log(*), monthly_actuals(*)')
     .eq('client_id', id)
     .order('aangemaakt_op');
 
@@ -40,6 +41,7 @@ export default async function KlantDetailPage({ params }: { params: Promise<{ id
           />
 
           <NulmetingTabel listingId={listing.id} clientId={id} rijen={listing.nulmeting ?? []} />
+          <ResultatenTabel nulmeting={listing.nulmeting ?? []} actueel={listing.monthly_actuals ?? []} />
           <ActielogFormulier listingId={listing.id} clientId={id} />
 
           <ul className="space-y-1 text-sm">
