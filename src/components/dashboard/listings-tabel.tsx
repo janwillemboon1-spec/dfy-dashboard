@@ -50,7 +50,15 @@ export function ListingsTabel({ listings }: { listings: ListingRij[] }) {
           {kolommen.map((kol) => (
             <th
               key={kol.k}
+              tabIndex={0}
+              aria-sort={sortKey === kol.k ? (sortAsc ? 'ascending' : 'descending') : 'none'}
               onClick={() => toggleSort(kol.k)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  toggleSort(kol.k);
+                }
+              }}
               className={`px-4 py-2 cursor-pointer ${kol.k === 'naam' ? 'text-left' : 'text-right'}`}
             >
               {kol.label}
@@ -69,9 +77,13 @@ export function ListingsTabel({ listings }: { listings: ListingRij[] }) {
               </div>
             </td>
             <td className="px-4 py-2 text-right font-medium">€ {l.omzet.toLocaleString('nl-NL')}</td>
-            <td className="px-4 py-2 text-right">{l.adr > 0 ? `€ ${l.adr.toLocaleString('nl-NL')}` : '—'}</td>
-            <td className="px-4 py-2 text-right">{l.bezetting > 0 ? `${l.bezetting.toFixed(1)}%` : '—'}</td>
-            <td className="px-4 py-2 text-right">{l.nachten > 0 ? Math.round(l.nachten) : '—'}</td>
+            {/* Geen "> 0"-gate op adr/bezetting/nachten: aggregeer() geeft hier altijd een
+                echt getal terug, nooit null/undefined. Een listing met 0% bezetting is
+                precies de listing die een klant wil zien opvallen, niet weggemoffeld
+                achter een "geen data"-streepje. */}
+            <td className="px-4 py-2 text-right">€ {l.adr.toLocaleString('nl-NL')}</td>
+            <td className="px-4 py-2 text-right">{l.bezetting.toFixed(1)}%</td>
+            <td className="px-4 py-2 text-right">{Math.round(l.nachten)}</td>
           </tr>
         ))}
       </tbody>
