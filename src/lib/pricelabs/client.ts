@@ -16,10 +16,14 @@ export interface PricelabsListing {
 }
 
 export interface PricelabsReservering {
+  reservation_id: string;
   check_in: string;
   check_out: string;
   rental_revenue: string;
+  total_cost: string;
+  no_of_days: number;
   booking_status: string;
+  booking_channel: string;
 }
 
 function apiKeyHeader(): HeadersInit {

@@ -4,10 +4,14 @@ import type { PricelabsReservering } from '@/lib/pricelabs/client';
 
 function reservering(overrides: Partial<PricelabsReservering> = {}): PricelabsReservering {
   return {
+    reservation_id: 'test-reservering-1',
     check_in: '2025-01-10',
     check_out: '2025-01-12',
     rental_revenue: '200',
+    total_cost: '300',
+    no_of_days: 2,
     booking_status: 'booked',
+    booking_channel: 'airbnb',
     ...overrides,
   };
 }
