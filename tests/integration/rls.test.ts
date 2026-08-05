@@ -12,6 +12,7 @@ const klantBWachtwoord = 'test-wachtwoord-1234';
 let clientAId: string;
 let clientBId: string;
 let klantBUserId: string;
+let klantAListingId: string;
 let klantBListingId: string;
 
 beforeAll(async () => {
@@ -43,6 +44,17 @@ beforeAll(async () => {
     email: klantBEmail,
     naam: 'Klant B',
   });
+
+  const { data: klantAListing } = await admin
+    .from('listings')
+    .insert({ client_id: clientAId, naam: 'Klant A Listing' })
+    .select()
+    .single();
+  klantAListingId = klantAListing!.id;
+
+  await admin
+    .from('monthly_actuals')
+    .insert({ listing_id: klantAListingId, jaar: 2025, maand: 1, omzet: 5000, bezetting: 80 });
 
   const { data: klantBListing } = await admin
     .from('listings')
@@ -80,7 +92,7 @@ describe('RLS: klant-isolatie', () => {
     expect(error).toBeNull();
   });
 
-  it('klant B kan monthly_actuals niet lezen, ook niet voor de eigen listing', async () => {
+  it('klant B kan monthly_actuals voor de eigen listing lezen, sinds de Fase 2b-koppeling', async () => {
     const klantClient = createClient(url, anonKey);
     await klantClient.auth.signInWithPassword({ email: klantBEmail, password: klantBWachtwoord });
 
@@ -88,6 +100,19 @@ describe('RLS: klant-isolatie', () => {
       .from('monthly_actuals')
       .select('*')
       .eq('listing_id', klantBListingId);
+    expect(error).toBeNull();
+    expect(data).toHaveLength(1);
+    expect(data![0]).toMatchObject({ listing_id: klantBListingId, omzet: 1000 });
+  });
+
+  it('klant B kan monthly_actuals van klant A niet lezen', async () => {
+    const klantClient = createClient(url, anonKey);
+    await klantClient.auth.signInWithPassword({ email: klantBEmail, password: klantBWachtwoord });
+
+    const { data, error } = await klantClient
+      .from('monthly_actuals')
+      .select('*')
+      .eq('listing_id', klantAListingId);
     expect(data).toEqual([]);
     expect(error).toBeNull();
   });
