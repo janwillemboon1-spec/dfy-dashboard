@@ -253,6 +253,56 @@ export type Database = {
         }
         Relationships: []
       }
+      pricelabs_reserveringen_cache: {
+        Row: {
+          booking_channel: string | null
+          booking_status: string
+          check_in: string
+          check_out: string
+          id: string
+          laatst_gesynchroniseerd: string
+          listing_id: string
+          no_of_days: number
+          rental_revenue: number
+          reservation_id: string
+          total_cost: number | null
+        }
+        Insert: {
+          booking_channel?: string | null
+          booking_status: string
+          check_in: string
+          check_out: string
+          id?: string
+          laatst_gesynchroniseerd?: string
+          listing_id: string
+          no_of_days: number
+          rental_revenue: number
+          reservation_id: string
+          total_cost?: number | null
+        }
+        Update: {
+          booking_channel?: string | null
+          booking_status?: string
+          check_in?: string
+          check_out?: string
+          id?: string
+          laatst_gesynchroniseerd?: string
+          listing_id?: string
+          no_of_days?: number
+          rental_revenue?: number
+          reservation_id?: string
+          total_cost?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pricelabs_reserveringen_cache_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           aangemaakt_op: string

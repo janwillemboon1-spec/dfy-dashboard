@@ -116,4 +116,50 @@ describe('RLS: klant-isolatie', () => {
     expect(data).toEqual([]);
     expect(error).toBeNull();
   });
+
+  it('klant B kan geen pricelabs_reserveringen_cache voor een andere klant lezen, wel de eigen', async () => {
+    await admin.from('pricelabs_reserveringen_cache').insert({
+      listing_id: klantBListingId,
+      reservation_id: 'rls-test-1',
+      check_in: '2025-01-10',
+      check_out: '2025-01-12',
+      rental_revenue: 500,
+      no_of_days: 2,
+      booking_status: 'booked',
+    });
+
+    const klantClient = createClient(url, anonKey);
+    await klantClient.auth.signInWithPassword({ email: klantBEmail, password: klantBWachtwoord });
+
+    const eigen = await klantClient
+      .from('pricelabs_reserveringen_cache')
+      .select('*')
+      .eq('listing_id', klantBListingId);
+    expect(eigen.data).toHaveLength(1);
+
+    const vanKlantA = await klantClient
+      .from('pricelabs_reserveringen_cache')
+      .select('*')
+      .eq('listing_id', klantAListingId);
+    expect(vanKlantA.data).toEqual([]);
+  });
+
+  it('klant B kan niet rechtstreeks schrijven naar pricelabs_reserveringen_cache', async () => {
+    const klantClient = createClient(url, anonKey);
+    await klantClient.auth.signInWithPassword({ email: klantBEmail, password: klantBWachtwoord });
+
+    const { error } = await klantClient.from('pricelabs_reserveringen_cache').insert({
+      listing_id: klantBListingId,
+      reservation_id: 'rls-test-2',
+      check_in: '2025-01-10',
+      check_out: '2025-01-12',
+      rental_revenue: 500,
+      no_of_days: 2,
+      booking_status: 'booked',
+    });
+    // Geen policy staat insert voor de klant-rol toe (alleen "for select"), dus dit
+    // faalt op RLS — een lege of ontbrekende policy voor het gevraagde command
+    // resulteert in een Postgres-foutmelding, niet in stilzwijgend niets doen.
+    expect(error).not.toBeNull();
+  });
 });
