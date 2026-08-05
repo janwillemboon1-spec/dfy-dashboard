@@ -33,7 +33,18 @@ export function berekenMaandVergelijkingen(listings: ListingData[]): MaandVergel
 
     for (const actueleRij of listing.monthlyActuals) {
       const nulmetingOmzet = nulmetingPerMaandnummer.get(actueleRij.maand);
-      if (nulmetingOmzet === undefined) continue;
+      if (nulmetingOmzet === undefined) {
+        // Kan voorkomen als de nulmeting niet alle 12 maandnummers dekt (bv. een
+        // dubbel ingevuld maandnummer bij handmatige onboarding, dat een ander
+        // maandnummer onbedekt laat) — dit is dan een datakwaliteitsprobleem, niet
+        // verwacht gedrag, dus zichtbaar loggen i.p.v. stilzwijgend negeren. Analoog
+        // aan hoe berekenMaandTotalen (src/lib/pricelabs/sync.ts) ongeldige
+        // reserveringsdata behandelt.
+        console.warn(
+          `[berekenMaandVergelijkingen] geen nulmeting gevonden voor maand ${actueleRij.maand} (jaar ${actueleRij.jaar}), overgeslagen`
+        );
+        continue;
+      }
 
       const sleutel = `${actueleRij.jaar}-${actueleRij.maand}`;
       const bestaand = perMaand.get(sleutel) ?? {
