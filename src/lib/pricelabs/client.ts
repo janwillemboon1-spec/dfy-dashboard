@@ -1,3 +1,12 @@
+// Geen `import 'server-only'` hier, anders dan de andere secret-rakende modules in
+// src/lib (supabase/admin.ts, email/send-welkomstmail.ts) — dit bestand wordt ook
+// geïmporteerd door het losse cron-script (scripts/sync-pricelabs-cron.ts), dat
+// buiten Next.js' build om draait via tsx. `server-only` gooit een harde runtime-fout
+// zodra hij buiten die build geïmporteerd wordt, dus die guard zou het cron-script
+// breken. PRICELABS_API_KEY heeft geen NEXT_PUBLIC_-prefix, dus Next.js bundelt 'm
+// sowieso nooit in client-JS — het enige dat deze guard normaal extra voorkomt is dat
+// iemand dit bestand per ongeluk vanuit een 'use client'-component importeert (dan
+// faalt de fetch met een 401 i.p.v. een duidelijke build-fout).
 const PRICELABS_API_BASE = 'https://api.pricelabs.co/v1';
 
 export interface PricelabsListing {
@@ -39,7 +48,16 @@ export async function fetchReservationData(input: {
   const alle: PricelabsReservering[] = [];
   let offset = 0;
 
-  for (;;) {
+  // Hard cap op het aantal paginas: de offset-paginering hierboven is niet door
+  // PriceLabs gedocumenteerd, alleen empirisch geverifieerd. Zonder deze cap zou een
+  // onverwachte responsvorm (bv. next_page dat true blijft met identieke data) deze
+  // loop voor altijd laten draaien — en dit draait binnen de per-listing loop van het
+  // dagelijkse cron-script (Taak 11), dus dat zou de hele sync-run laten hangen.
+  // 500 paginas × 100 rijen = 50.000 reserveringen, ruim boven wat één listing ooit
+  // realistisch heeft binnen het opgevraagde datumvenster.
+  const MAX_PAGINAS = 500;
+
+  for (let pagina = 0; pagina < MAX_PAGINAS; pagina++) {
     const url = new URL(`${PRICELABS_API_BASE}/reservation_data`);
     url.searchParams.set('pms', input.pms);
     url.searchParams.set('listing_id', input.listingId);
@@ -56,9 +74,11 @@ export async function fetchReservationData(input: {
     const body = (await response.json()) as { next_page: boolean; data: PricelabsReservering[] };
     alle.push(...body.data);
 
-    if (!body.next_page || body.data.length === 0) break;
+    if (!body.next_page || body.data.length === 0) return alle;
     offset += body.data.length;
   }
 
-  return alle;
+  throw new Error(
+    `PriceLabs /reservation_data bleef na ${MAX_PAGINAS} paginas nog steeds next_page=true melden voor listing ${input.listingId} — mogelijk een API-probleem, sync afgebroken.`
+  );
 }
