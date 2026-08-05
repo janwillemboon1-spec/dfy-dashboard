@@ -1,10 +1,15 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { berekenMaandVergelijkingen, berekenWowCijfer, laatste12Maanden } from '@/lib/dashboard/bereken-resultaten';
+import { WowCijfer } from '@/components/dashboard/wow-cijfer';
+import { ResultatenGrafiek } from '@/components/dashboard/resultaten-grafiek';
+import { ActielogTijdlijn } from '@/components/dashboard/actielog-tijdlijn';
 
-// Fase 1 placeholder — the middleware (src/lib/supabase/middleware.ts) already
-// guards /dashboard, and klant-role users land here after login (auth callback)
-// or after being bounced out of /admin. The redirect below is defense-in-depth
-// only (matching admin/layout.tsx's pattern), not the primary auth boundary.
+// Geen expliciet client_id-filter nodig op de listings-query hieronder: de
+// "klant leest eigen listings"-RLS-policy (client_id = current_client_id()) scopet dit
+// al af tot precies de listings van de ingelogde klant. Anders dan bij de admin-kant
+// (waar RLS voor role=admin alles doorlaat en filtering dus de enige echte scoping is),
+// is RLS hier zelf al de volledige, restrictieve grens.
 export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -12,17 +17,34 @@ export default async function DashboardPage() {
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('naam, client_id')
+    .select('naam')
     .eq('id', user.id)
     .maybeSingle();
   if (profileError) console.error('Kon profiel niet laden voor dashboard:', profileError);
 
+  const { data: listings, error: listingsError } = await supabase
+    .from('listings')
+    .select('nulmeting(jaar, maand, omzet), monthly_actuals(jaar, maand, omzet), action_log(id, datum, omschrijving)');
+  if (listingsError) console.error('Kon listings niet laden voor dashboard:', listingsError);
+
+  const vergelijkingen = laatste12Maanden(
+    berekenMaandVergelijkingen(
+      (listings ?? []).map((listing) => ({
+        nulmeting: listing.nulmeting ?? [],
+        monthlyActuals: listing.monthly_actuals ?? [],
+      }))
+    )
+  );
+  const wowCijfer = berekenWowCijfer(vergelijkingen);
+  const actielogItems = (listings ?? []).flatMap((listing) => listing.action_log ?? []);
+
   return (
-    <main className="mx-auto max-w-2xl py-24 px-4 text-center">
-      <h1 className="font-serif text-3xl">Welkom, {profile?.naam ?? 'daar'}!</h1>
-      <p className="mt-4 text-muted-foreground">
-        Je volledige dashboard met resultaten, doelen en meer volgt binnenkort.
-      </p>
+    <main className="mx-auto max-w-3xl space-y-10 px-4 py-12">
+      <h1 className="font-serif text-2xl">Welkom, {profile?.naam ?? 'daar'}!</h1>
+
+      <WowCijfer bedrag={wowCijfer} />
+      <ResultatenGrafiek data={vergelijkingen} />
+      <ActielogTijdlijn items={actielogItems} />
     </main>
   );
 }
