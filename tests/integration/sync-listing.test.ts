@@ -55,7 +55,7 @@ describe('syncListing', () => {
     const { data: rijen } = await admin.from('monthly_actuals').select('*').eq('listing_id', listingId);
 
     expect(rijen).toHaveLength(1);
-    expect(rijen![0]).toMatchObject({ jaar: 2025, maand: 1, omzet: 200 });
+    expect(rijen![0]).toMatchObject({ jaar: 2025, maand: 1, omzet: 200, bezetting: 6.45 });
   });
 
   it('is idempotent: opnieuw draaien voor dezelfde periode overschrijft in plaats van te verdubbelen', async () => {
