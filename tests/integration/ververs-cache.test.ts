@@ -13,6 +13,7 @@ vi.mock('@/lib/pricelabs/client', async () => {
 });
 
 const { verversPricelabsCache } = await import('@/lib/pricelabs/ververs-cache');
+const { fetchAllListings } = await import('@/lib/pricelabs/client');
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -33,5 +34,22 @@ describe('verversPricelabsCache', () => {
       .single();
 
     expect(data).toMatchObject({ naam: 'Testwoning Een', pms: 'hostaway' });
+  });
+
+  it('werkt een bestaande cache-rij bij i.p.v. te dupliceren', async () => {
+    vi.mocked(fetchAllListings).mockResolvedValueOnce([
+      { id: 'ververs-test-1', pms: 'hostaway', name: 'Testwoning Een (bijgewerkt)' },
+    ]);
+
+    await verversPricelabsCache(admin);
+
+    const { data, error } = await admin
+      .from('pricelabs_listings_cache')
+      .select('*')
+      .eq('pricelabs_listing_id', 'ververs-test-1')
+      .single();
+
+    expect(error).toBeNull();
+    expect(data).toMatchObject({ naam: 'Testwoning Een (bijgewerkt)', pms: 'hostaway' });
   });
 });
