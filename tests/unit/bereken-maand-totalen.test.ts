@@ -76,4 +76,22 @@ describe('berekenMaandTotalen', () => {
     expect(resultaat).toHaveLength(3);
     expect(resultaat.every((r) => r.omzet === 0 && r.bezetting === 0)).toBe(true);
   });
+
+  it('negeert een reservering met check_out op of vóór check_in (0 of negatieve nachten)', () => {
+    const resultaat = berekenMaandTotalen(
+      [reservering({ check_in: '2025-01-10', check_out: '2025-01-10', rental_revenue: '200' })],
+      { jaar: 2025, maand: 1 },
+      { jaar: 2025, maand: 1 }
+    );
+    expect(resultaat).toEqual([{ jaar: 2025, maand: 1, omzet: 0, bezetting: 0 }]);
+  });
+
+  it('negeert een reservering met een niet-numerieke rental_revenue', () => {
+    const resultaat = berekenMaandTotalen(
+      [reservering({ check_in: '2025-01-10', check_out: '2025-01-12', rental_revenue: 'onbekend' })],
+      { jaar: 2025, maand: 1 },
+      { jaar: 2025, maand: 1 }
+    );
+    expect(resultaat).toEqual([{ jaar: 2025, maand: 1, omzet: 0, bezetting: 0 }]);
+  });
 });

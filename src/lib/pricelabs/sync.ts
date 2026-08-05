@@ -43,7 +43,28 @@ export function berekenMaandTotalen(
     const checkIn = new Date(`${reservering.check_in}T00:00:00Z`);
     const checkOut = new Date(`${reservering.check_out}T00:00:00Z`);
     const totaalNachten = Math.round((checkOut.getTime() - checkIn.getTime()) / 86_400_000);
-    if (totaalNachten <= 0) continue;
+    // Ongeldige of gelijke check-in/check-out (of een niet-parsebare datum, wat via
+    // NaN <= 0 === false ook hier terechtkomt) draagt niets bij aan omzet/bezetting —
+    // maar wordt, anders dan bij een geannuleerde boeking, wél geflagd: dit duidt op
+    // een datakwaliteitsprobleem bij PriceLabs/de PMS-koppeling, niet op verwacht gedrag.
+    if (!(totaalNachten > 0)) {
+      console.warn(
+        `[berekenMaandTotalen] reservering met check_in=${reservering.check_in}, check_out=${reservering.check_out} levert geen positief aantal nachten op, overgeslagen`
+      );
+      continue;
+    }
+
+    const rentalRevenue = Number(reservering.rental_revenue);
+    if (Number.isNaN(rentalRevenue)) {
+      // Niet laten crashen op één kapotte reservering — syncListing doet straks één
+      // upsert-call voor alle maanden van deze listing tegelijk, en anders zou deze
+      // ene rij de hele batch (dus alle geldige maanden) laten falen op de not-null
+      // constraint van monthly_actuals.omzet.
+      console.warn(
+        `[berekenMaandTotalen] reservering met check_in=${reservering.check_in} heeft een niet-numerieke rental_revenue ("${reservering.rental_revenue}"), omzet voor deze reservering overgeslagen`
+      );
+      continue;
+    }
 
     const nachtenPerMaandVoorDezeBoeking = new Map<string, number>();
     for (let i = 0; i < totaalNachten; i++) {
@@ -54,7 +75,6 @@ export function berekenMaandTotalen(
       nachtenPerMaand.set(sleutel, nachtenPerMaand.get(sleutel)! + 1);
     }
 
-    const rentalRevenue = Number(reservering.rental_revenue);
     for (const [sleutel, nachtenInMaand] of nachtenPerMaandVoorDezeBoeking) {
       const aandeel = (nachtenInMaand / totaalNachten) * rentalRevenue;
       omzetPerMaand.set(sleutel, omzetPerMaand.get(sleutel)! + aandeel);
@@ -78,6 +98,10 @@ export function berekenMaandTotalen(
   return resultaat;
 }
 
+// Orchestratie (fetch -> aggregeer -> upsert) leeft bewust in hetzelfde bestand als de
+// pure berekenMaandTotalen hierboven: deze functie wordt ongewijzigd hergebruikt vanuit
+// zowel een admin server action als het losse cron-script, dus centraliseren voorkomt
+// dat de fetch->aggregeer->upsert-volgorde ergens gedupliceerd raakt.
 export async function syncListing(
   supabase: SupabaseClient<Database>,
   input: {
