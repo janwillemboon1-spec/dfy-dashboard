@@ -51,10 +51,10 @@ export function PricelabsKoppeling({
             })
           }
         >
-          Sync nu
+          {isPending ? 'Bezig...' : 'Sync nu'}
         </Button>
         <Button
-          variant="ghost"
+          variant="destructive"
           size="sm"
           disabled={isPending}
           onClick={() =>
@@ -68,7 +68,7 @@ export function PricelabsKoppeling({
             })
           }
         >
-          Loskoppelen
+          {isPending ? 'Bezig...' : 'Loskoppelen'}
         </Button>
         {foutmelding && <p className="text-destructive">{foutmelding}</p>}
       </div>
@@ -77,11 +77,18 @@ export function PricelabsKoppeling({
 
   return (
     <div className="space-y-2 text-sm">
+      <label htmlFor={`pricelabs-zoek-${listingId}`} className="text-xs text-muted-foreground">
+        Zoek PriceLabs-listing
+      </label>
       <Input
+        id={`pricelabs-zoek-${listingId}`}
         placeholder="Zoek PriceLabs-listing op naam..."
         value={zoekterm}
         onChange={(e) => setZoekterm(e.target.value)}
       />
+      {zoekterm.trim() && resultaten.length === 0 && (
+        <p className="text-muted-foreground">Geen PriceLabs-listings gevonden voor &quot;{zoekterm}&quot;.</p>
+      )}
       {resultaten.length > 0 && (
         <ul className="divide-y divide-border rounded-md border border-border">
           {resultaten.map((rij) => (
@@ -90,6 +97,7 @@ export function PricelabsKoppeling({
               <Button
                 size="sm"
                 disabled={isPending || !rij.pms}
+                title={rij.pms ? undefined : 'PMS-type onbekend voor deze listing'}
                 onClick={() =>
                   startTransition(async () => {
                     setFoutmelding(null);
@@ -106,7 +114,7 @@ export function PricelabsKoppeling({
                   })
                 }
               >
-                Koppelen
+                {isPending ? 'Bezig...' : 'Koppelen'}
               </Button>
             </li>
           ))}
