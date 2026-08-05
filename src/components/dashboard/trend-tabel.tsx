@@ -25,20 +25,28 @@ export function TrendTabel({ trend, vergelijkModus }: { trend: TrendRij[]; verge
           const [jaarStr, maandStr] = t.maand.split('-');
           const label = `${MAAND_NAMEN_VOL[Number(maandStr) - 1]} ${jaarStr}`;
           const vergelijkWaarde = vergelijkModus === 'stly' ? t.omzetStly : t.omzetNulmeting;
-          const verschil = vergelijkWaarde !== null && vergelijkWaarde > 0
+          // vergelijkWaarde is alleen null als er écht geen vergelijkingsdata is
+          // (nulmeting-modus zonder gekoppelde periode) — dat is iets anders dan een
+          // vergelijkingsomzet van precies € 0, wat een geldige waarde is (bv. STLY
+          // vóórdat de listing bestond). Bij "0 naar iets positiefs" is een relatief
+          // percentage niet zinvol (deling door nul), dus dat geval krijgt het label
+          // "nieuw" i.p.v. stil verdwijnen achter hetzelfde streepje als "geen data".
+          const geenVergelijkingsdata = vergelijkWaarde === null;
+          const verschil = !geenVergelijkingsdata && vergelijkWaarde > 0
             ? ((t.omzet - vergelijkWaarde) / vergelijkWaarde) * 100
             : null;
+          const isNieuw = !geenVergelijkingsdata && vergelijkWaarde === 0 && t.omzet > 0;
           return (
             <tr key={t.maand} className="border-t border-border">
               <td className="px-4 py-2 font-medium">{label}</td>
-              <td className="px-4 py-2 text-right font-medium">
-                {t.omzet > 0 ? `€ ${t.omzet.toLocaleString('nl-NL')}` : <span className="text-muted-foreground">—</span>}
-              </td>
+              <td className="px-4 py-2 text-right font-medium">€ {t.omzet.toLocaleString('nl-NL')}</td>
               <td className="px-4 py-2 text-right text-muted-foreground">
-                {vergelijkWaarde !== null && vergelijkWaarde > 0 ? `€ ${vergelijkWaarde.toLocaleString('nl-NL')}` : '—'}
+                {geenVergelijkingsdata ? '—' : `€ ${vergelijkWaarde.toLocaleString('nl-NL')}`}
               </td>
               <td className="px-4 py-2 text-right">
-                {verschil !== null ? (
+                {isNieuw ? (
+                  <span className="text-green-700">nieuw</span>
+                ) : verschil !== null ? (
                   <span className={verschil >= 0 ? 'text-green-700' : 'text-red-700'}>
                     {verschil >= 0 ? '+' : ''}
                     {verschil.toFixed(1)}%
