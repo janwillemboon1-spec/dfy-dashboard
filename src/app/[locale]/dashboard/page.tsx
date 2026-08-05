@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { berekenMaandVergelijkingen, berekenWowCijfer, laatste12Maanden } from '@/lib/dashboard/bereken-resultaten';
 import { WowCijfer } from '@/components/dashboard/wow-cijfer';
+import { OmzetDashboard } from '@/components/dashboard/omzet-dashboard';
 import { ResultatenGrafiek } from '@/components/dashboard/resultaten-grafiek';
 import { ActielogTijdlijn } from '@/components/dashboard/actielog-tijdlijn';
 
@@ -49,10 +50,11 @@ export default async function DashboardPage() {
   const actielogItems = (listings ?? []).flatMap((listing) => listing.action_log ?? []);
 
   return (
-    <main className="mx-auto max-w-3xl space-y-10 px-4 py-12">
+    <main className="mx-auto max-w-5xl space-y-10 px-4 py-12">
       <h1 className="font-serif text-2xl">Welkom, {profile?.naam ?? 'daar'}!</h1>
 
       <WowCijfer bedrag={wowCijfer} />
+      <OmzetDashboard />
       <ResultatenGrafiek data={vergelijkingen} />
       <ActielogTijdlijn items={actielogItems} />
     </main>
