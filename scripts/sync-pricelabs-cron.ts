@@ -8,11 +8,18 @@ import { syncListing, volgendeMaand } from '../src/lib/pricelabs/sync';
 // service-role Supabase-client i.p.v. lib/supabase/admin.ts te hergebruiken: dat
 // bestand start met `import 'server-only'`, wat buiten Next.js' build (dus ook
 // hier, via een los `tsx`-proces) een harde runtime-fout geeft.
-const supabase = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { autoRefreshToken: false, persistSession: false } }
-);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+if (!supabaseUrl || !serviceRoleKey) {
+  console.error(
+    '[sync-pricelabs-cron] NEXT_PUBLIC_SUPABASE_URL en/of SUPABASE_SERVICE_ROLE_KEY ontbreken — controleer de env vars van deze Railway-service.'
+  );
+  process.exit(1);
+}
+
+const supabase = createClient<Database>(supabaseUrl, serviceRoleKey, {
+  auth: { autoRefreshToken: false, persistSession: false },
+});
 
 function huidigeMaand(): { jaar: number; maand: number } {
   const nu = new Date();
@@ -32,7 +39,16 @@ function maandenTerug(vanaf: { jaar: number; maand: number }, aantal: number): {
 
 async function main() {
   console.log('[sync-pricelabs-cron] cache verversen...');
-  await verversPricelabsCache(supabase);
+  try {
+    await verversPricelabsCache(supabase);
+  } catch (fout) {
+    // Een mislukte cache-refresh mag de sync van bestaande koppelingen niet
+    // blokkeren: elke listing hieronder leest zijn pms via een aparte, losstaande
+    // SELECT op de al eerder gepersisteerde cache-rij, niet op het resultaat van
+    // deze refresh-poging. Alleen een kapotte upsert ná een geslaagde fetch mag
+    // hard falen (zie ververs-cache.ts) — een fetch-fout hier niet.
+    console.error('[sync-pricelabs-cron] cache verversen mislukt, ga door met bestaande cache:', fout);
+  }
 
   const { data: listings, error } = await supabase
     .from('listings')
@@ -52,16 +68,25 @@ async function main() {
     `[sync-pricelabs-cron] ${listings?.length ?? 0} gekoppelde listings, venster ${vanaf.jaar}-${vanaf.maand} t/m ${tot.jaar}-${tot.maand}`
   );
 
+  const geslaagd: string[] = [];
+  const mislukt: string[] = [];
+
   for (const listing of listings ?? []) {
     try {
-      const { data: cacheRow } = await supabase
+      const { data: cacheRow, error: cacheError } = await supabase
         .from('pricelabs_listings_cache')
         .select('pms')
         .eq('pricelabs_listing_id', listing.pricelabs_listing_id!)
         .single();
 
+      if (cacheError) {
+        console.error(`[sync-pricelabs-cron] kon cache-rij niet ophalen voor listing ${listing.id}:`, cacheError.message);
+        mislukt.push(listing.id);
+        continue;
+      }
       if (!cacheRow?.pms) {
         console.error(`[sync-pricelabs-cron] geen pms bekend voor listing ${listing.id}, overgeslagen`);
+        mislukt.push(listing.id);
         continue;
       }
 
@@ -73,12 +98,17 @@ async function main() {
         tot,
       });
       console.log(`[sync-pricelabs-cron] listing ${listing.id} gesynchroniseerd`);
+      geslaagd.push(listing.id);
     } catch (fout) {
       console.error(`[sync-pricelabs-cron] listing ${listing.id} mislukt:`, fout);
+      mislukt.push(listing.id);
     }
   }
 
-  console.log('[sync-pricelabs-cron] klaar');
+  console.log(
+    `[sync-pricelabs-cron] klaar — ${geslaagd.length} geslaagd, ${mislukt.length} mislukt` +
+      (mislukt.length > 0 ? ` (${mislukt.join(', ')})` : '')
+  );
 }
 
 main().then(
