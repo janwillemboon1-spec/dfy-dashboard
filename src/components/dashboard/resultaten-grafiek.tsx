@@ -2,15 +2,9 @@
 
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { MAAND_NAMEN_KORT } from '@/lib/constants/maanden';
+import type { MaandVergelijking } from '@/lib/dashboard/bereken-resultaten';
 
-interface GrafiekPunt {
-  jaar: number;
-  maand: number;
-  nulmetingOmzet: number;
-  actueelOmzet: number;
-}
-
-export function ResultatenGrafiek({ data }: { data: GrafiekPunt[] }) {
+export function ResultatenGrafiek({ data }: { data: MaandVergelijking[] }) {
   if (data.length === 0) return null;
 
   const grafiekData = data.map((punt) => ({
@@ -20,12 +14,16 @@ export function ResultatenGrafiek({ data }: { data: GrafiekPunt[] }) {
   }));
 
   return (
-    <div className="h-72 w-full">
+    <div
+      className="h-72 w-full"
+      role="img"
+      aria-label="Staafdiagram: omzet per maand, nulmeting vergeleken met actueel"
+    >
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={grafiekData}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
           <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-          <YAxis tick={{ fontSize: 12 }} tickFormatter={(waarde: number) => `€${waarde}`} />
+          <YAxis tick={{ fontSize: 12 }} tickFormatter={(waarde: number) => `€${waarde.toLocaleString('nl-NL')}`} />
           <Tooltip formatter={(waarde) => `€ ${Number(waarde).toLocaleString('nl-NL')}`} />
           <Legend />
           <Bar dataKey="Nulmeting" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
