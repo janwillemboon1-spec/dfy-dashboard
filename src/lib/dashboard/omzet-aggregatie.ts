@@ -44,7 +44,11 @@ export function aggregeer(reserveringen: CacheReservering[], totaleDagen: number
 export function dagenInPeriode(start: string, eind: string): number {
   const s = new Date(`${start}T00:00:00Z`);
   const e = new Date(`${eind}T00:00:00Z`);
-  return Math.max(1, Math.ceil((e.getTime() - s.getTime()) / 86_400_000));
+  // Inclusief beide grenzen (1 juli t/m 31 juli = 31 dagen, niet 30): dit moet dezelfde
+  // kalenderdagen-basis zijn als dagenInMaand() in nulmeting-metrics.ts, anders wordt een
+  // bezetting op basis van deze functie stelselmatig tegen een andere noemer vergeleken
+  // dan de nulmeting-bezetting waarmee hij wordt afgezet.
+  return Math.max(1, Math.ceil((e.getTime() - s.getTime()) / 86_400_000) + 1);
 }
 
 export function groepeerPerMaand(reserveringen: CacheReservering[]): Record<string, CacheReservering[]> {

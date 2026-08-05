@@ -59,7 +59,7 @@ describe('aggregeer', () => {
 
 describe('dagenInPeriode', () => {
   it('telt het aantal dagen tussen twee datums inclusief', () => {
-    expect(dagenInPeriode('2025-07-01', '2025-07-31')).toBe(30);
+    expect(dagenInPeriode('2025-07-01', '2025-07-31')).toBe(31);
   });
 
   it('geeft minstens 1 terug voor een periode van één dag', () => {
