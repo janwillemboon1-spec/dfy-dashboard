@@ -22,7 +22,14 @@ export default async function DashboardPage() {
     .select('naam, role')
     .eq('id', user.id)
     .maybeSingle();
-  if (profileError) console.error('Kon profiel niet laden voor dashboard:', profileError);
+  // Faalt dicht i.p.v. open: als de rol niet betrouwbaar vastgesteld kan worden
+  // (query-fout), NIET stilzwijgend doorgaan alsof het een klant is — dat zou bij een
+  // falende profile-lookup voor een admin-sessie alsnog de boven beschreven
+  // data-mix-up-bug reproduceren. Opnieuw inloggen is de veilige, simpele terugval.
+  if (profileError) {
+    console.error('Kon profiel niet laden voor dashboard:', profileError);
+    redirect('/login');
+  }
   if (profile?.role === 'admin') redirect('/admin/klanten');
 
   const { data: listings, error: listingsError } = await supabase
