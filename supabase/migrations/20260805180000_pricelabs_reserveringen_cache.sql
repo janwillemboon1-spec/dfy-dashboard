@@ -4,13 +4,18 @@ create table pricelabs_reserveringen_cache (
   reservation_id text not null,
   check_in date not null,
   check_out date not null,
-  rental_revenue numeric(10,2) not null,
-  total_cost numeric(10,2),
-  no_of_days int not null,
+  -- not null, in tegenstelling tot total_cost: de sync-server-action (Taak 5) filtert
+  -- reserveringen met een niet-numerieke rental_revenue er al uit vóór de insert (skip +
+  -- console.warn, zelfde patroon als de bestaande PriceLabs-sync uit Fase 2a) — er komt
+  -- hier dus nooit een ontbrekende waarde binnen om naar 0 te hoeven terugvallen.
+  rental_revenue numeric(10,2) not null check (rental_revenue >= 0),
+  total_cost numeric(10,2) check (total_cost >= 0),
+  no_of_days int not null check (no_of_days >= 0),
   booking_status text not null,
   booking_channel text,
   laatst_gesynchroniseerd timestamptz not null default now(),
-  unique (listing_id, reservation_id)
+  unique (listing_id, reservation_id),
+  check (check_out > check_in)
 );
 
 create index pricelabs_reserveringen_cache_listing_id_idx on pricelabs_reserveringen_cache(listing_id);
