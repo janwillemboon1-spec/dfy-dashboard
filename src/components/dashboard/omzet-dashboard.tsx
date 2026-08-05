@@ -63,8 +63,15 @@ export function OmzetDashboard() {
 
   const laadData = useCallback(() => {
     if (periodeId === 'eigen') {
-      if (!eigenStart || !eigenEind) return;
+      if (!eigenStart || !eigenEind) {
+        // Bumpt de teller ook hier: anders kan een nog lopende aanvraag van een eerder
+        // ingevulde, geldige periode alsnog data zetten onder een inmiddels leeg
+        // datumveld.
+        laatsteAanvraagId.current += 1;
+        return;
+      }
       if (eigenStart > eigenEind) {
+        laatsteAanvraagId.current += 1;
         setDataFoutmelding('De startdatum mag niet na de einddatum liggen.');
         return;
       }
