@@ -115,6 +115,7 @@ export type Database = {
           id: string
           naam: string
           pricelabs_listing_id: string | null
+          samenwerking_gestart: string | null
         }
         Insert: {
           aangemaakt_op?: string
@@ -124,6 +125,7 @@ export type Database = {
           id?: string
           naam: string
           pricelabs_listing_id?: string | null
+          samenwerking_gestart?: string | null
         }
         Update: {
           aangemaakt_op?: string
@@ -133,6 +135,7 @@ export type Database = {
           id?: string
           naam?: string
           pricelabs_listing_id?: string | null
+          samenwerking_gestart?: string | null
         }
         Relationships: [
           {
