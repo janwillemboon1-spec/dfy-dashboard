@@ -375,10 +375,16 @@ export async function wijzigKlant(input: {
   // laten mislukken ná de clients-update — en die update gebeurt in de nieuwe volgorde
   // hieronder juist pas ná de auth-aanroep, dus zonder deze voorcontrole zou een
   // gewoon dubbel e-mailadres onnodig eerst een externe API-aanroep kosten.
+  // Bewust .eq() i.p.v. .ilike(): ilike's patroonargument behandelt "_" en "%" als
+  // wildcards, en die komen in echte e-mailadressen voor (bv. "john_doe@..."). Met
+  // ilike zou zo'n adres per ongeluk kunnen "matchen" met een heel ander bestaand adres
+  // en de bewerking dan ten onrechte blokkeren. .eq() is hoofdlettergevoelig (de
+  // unieke index is dat niet), maar dat kost in het ergste geval alleen een overbodige
+  // val-through naar de 23505-vangnet hieronder — geen correctheidsverlies.
   const { data: bestaandeClient, error: dubbelError } = await supabase
     .from('clients')
     .select('id')
-    .ilike('email', input.email.trim())
+    .eq('email', input.email.trim())
     .neq('id', input.clientId)
     .maybeSingle();
   if (dubbelError) throw new Error(dubbelError.message);
