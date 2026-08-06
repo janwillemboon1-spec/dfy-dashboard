@@ -96,9 +96,6 @@ export async function koppelListing(input: {
     .maybeSingle();
 
   if (nulmetingError) throw new Error(nulmetingError.message);
-  if (!laatsteNulmeting) {
-    throw new Error('Geen nulmeting gevonden voor deze accommodatie — kan geen backfill-periode bepalen.');
-  }
 
   const { error: updateError } = await supabase
     .from('listings')
@@ -112,16 +109,19 @@ export async function koppelListing(input: {
     throw new Error(updateError.message);
   }
 
-  const vanaf = volgendeMaand(laatsteNulmeting.jaar, laatsteNulmeting.maand);
+  // Zonder nulmeting: val terug op de huidige maand (net als syncListingNow hieronder al
+  // doet) — er is dan geen bekend "waar eindigt de baseline"-punt om vanaf te backfillen,
+  // dus monthly_actuals begint gewoon vanaf nu bij te houden.
   const nu = new Date();
-  const tot = { jaar: nu.getUTCFullYear(), maand: nu.getUTCMonth() + 1 };
+  const huidigeMaand = { jaar: nu.getUTCFullYear(), maand: nu.getUTCMonth() + 1 };
+  const vanaf = laatsteNulmeting ? volgendeMaand(laatsteNulmeting.jaar, laatsteNulmeting.maand) : huidigeMaand;
 
   await syncListing(supabase, {
     listingId: input.listingId,
     pricelabsListingId: input.pricelabsListingId,
     pms: input.pms,
     vanaf,
-    tot,
+    tot: huidigeMaand,
   });
 
   revalidatePath(`/admin/klanten/${input.clientId}`);

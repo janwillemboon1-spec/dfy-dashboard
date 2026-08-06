@@ -132,6 +132,30 @@ describe('pricelabs-koppeling server actions: expliciete admin-check', () => {
     expect(listing!.pricelabs_listing_id).toBe('pl-x');
   });
 
+  it('koppelListing werkt ook als er nog geen nulmeting bestaat voor deze accommodatie', async () => {
+    const { data: listingZonderNulmeting } = await admin
+      .from('listings')
+      .insert({ client_id: doelClientId, naam: 'Listing zonder nulmeting' })
+      .select()
+      .single();
+
+    activeCookieStore = await loginAlsCookieStore(adminEmail, wachtwoord);
+
+    await koppelListing({
+      listingId: listingZonderNulmeting!.id,
+      clientId: doelClientId,
+      pricelabsListingId: 'pl-zonder-nulmeting',
+      pms: 'hostaway',
+    });
+
+    const { data: listing } = await admin
+      .from('listings')
+      .select('pricelabs_listing_id')
+      .eq('id', listingZonderNulmeting!.id)
+      .single();
+    expect(listing!.pricelabs_listing_id).toBe('pl-zonder-nulmeting');
+  });
+
   it('syncListingNow weigert een niet-admin', async () => {
     activeCookieStore = await loginAlsCookieStore(klantEmail, wachtwoord);
     await expect(syncListingNow({ listingId: doelListingId, clientId: doelClientId })).rejects.toThrow('Niet geautoriseerd.');
