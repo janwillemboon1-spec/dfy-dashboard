@@ -358,6 +358,13 @@ export async function wijzigKlant(input: {
 
   if (!input.naam.trim()) throw new Error('Naam is verplicht.');
   if (!input.email.trim()) throw new Error('E-mailadres is verplicht.');
+  // Zonder deze check komt een getypte fout (geen @, geen domein) pas aan het licht bij
+  // de externe auth.admin.updateUserById-aanroep verderop — ná clients.email al is
+  // bijgewerkt — wat precies de inconsistentie hieronder veroorzaakt die we willen
+  // voorkomen. Hier vroeg en goedkoop afvangen, vóór er iets geschreven wordt.
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email.trim())) {
+    throw new Error('Ongeldig e-mailadres.');
+  }
 
   const supabase = await createClient();
   const admin = createAdminClient();
@@ -387,17 +394,23 @@ export async function wijzigKlant(input: {
   if (profielError) throw new Error(profielError.message);
 
   if (profiel) {
-    const { error: profielUpdateError } = await supabase
-      .from('profiles')
-      .update({ email: input.email })
-      .eq('id', profiel.id);
-    if (profielUpdateError) throw new Error(profielUpdateError.message);
-
+    // Eerst de externe Auth-aanroep (de meest risicovolle stap — netwerk, kan falen),
+    // pas dáárna de lokale profiles.email bijwerken. Andersom (zoals eerder) zou een
+    // mislukte auth-aanroep profiles.email al op het nieuwe adres laten staan terwijl
+    // het daadwerkelijke inlogadres (auth.users.email) nog het oude is — dan toont de
+    // app overal het nieuwe adres, terwijl de klant alleen nog met het oude kan
+    // inloggen, zonder dat dat ergens zichtbaar is.
     const { error: authError } = await admin.auth.admin.updateUserById(profiel.id, {
       email: input.email,
       email_confirm: true,
     });
     if (authError) throw new Error(authError.message);
+
+    const { error: profielUpdateError } = await supabase
+      .from('profiles')
+      .update({ email: input.email })
+      .eq('id', profiel.id);
+    if (profielUpdateError) throw new Error(profielUpdateError.message);
   }
 
   revalidatePath(`/admin/klanten/${input.clientId}`);
@@ -415,15 +428,24 @@ export async function verwijderKlant(input: { clientId: string }) {
     .maybeSingle();
   if (profielError) throw new Error(profielError.message);
 
-  const { error: rpcError } = await admin.rpc('delete_client_cascade', {
-    target_client_id: input.clientId,
-  });
-  if (rpcError) throw new Error(rpcError.message);
-
+  // Eerst het inlogaccount verwijderen, dan pas de cascade-RPC — niet andersom. Als de
+  // RPC eerst zou draaien en de auth-verwijdering daarna mislukt, blijft er een
+  // inlogaccount over zonder profiel/klant erachter: niet meer zichtbaar of
+  // opnieuw-te-verwijderen via het admin-scherm (de klant bestaat daar niet meer), maar
+  // wel nog steeds bruikbaar om mee in te loggen. In deze volgorde geldt het omgekeerde:
+  // `profiles.id references auth.users(id) on delete cascade` ruimt het profiel al op
+  // zodra het inlogaccount weg is, dus als de RPC daarna alsnog mislukt, blijft de klant
+  // (met lege/opgeruimde profielkoppeling) gewoon zichtbaar in /admin/klanten, en kan de
+  // admin de verwijdering vanuit de UI simpelweg opnieuw proberen.
   if (profiel) {
     const { error: authError } = await admin.auth.admin.deleteUser(profiel.id);
     if (authError) throw new Error(authError.message);
   }
+
+  const { error: rpcError } = await admin.rpc('delete_client_cascade', {
+    target_client_id: input.clientId,
+  });
+  if (rpcError) throw new Error(rpcError.message);
 
   revalidatePath('/admin/klanten');
 }
