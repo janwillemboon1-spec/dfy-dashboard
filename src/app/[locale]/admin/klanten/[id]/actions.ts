@@ -469,3 +469,35 @@ export async function verwijderKlant(input: { clientId: string }) {
 
   revalidatePath('/admin/klanten');
 }
+
+export async function wijzigListing(input: {
+  listingId: string;
+  clientId: string;
+  naam: string;
+  adres: string | null;
+  airbnbUrl: string | null;
+}) {
+  await assertIsAdmin();
+
+  if (!input.naam.trim()) throw new Error('Naam is verplicht.');
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from('listings')
+    .update({ naam: input.naam, adres: input.adres, airbnb_url: input.airbnbUrl })
+    .eq('id', input.listingId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/admin/klanten/${input.clientId}`);
+}
+
+export async function verwijderListing(input: { listingId: string; clientId: string }) {
+  await assertIsAdmin();
+  const supabase = await createClient();
+
+  const { error } = await supabase.from('listings').delete().eq('id', input.listingId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/admin/klanten/${input.clientId}`);
+}
