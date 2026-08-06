@@ -3,7 +3,11 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { assertIsAdmin } from '@/lib/auth/assert-admin';
-import { syncListing, volgendeMaand } from '@/lib/pricelabs/sync';
+import { syncListing, volgendeMaand, dagenInMaand } from '@/lib/pricelabs/sync';
+import { syncListingReserveringen } from '@/lib/pricelabs/reserveringen-sync';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { aggregeer, groepeerPerMaand } from '@/lib/dashboard/omzet-aggregatie';
+import { bepaalNulmetingBronnen } from '@/lib/dashboard/nulmeting-uit-pricelabs';
 
 export async function corrigeerNulmeting(input: {
   nulmetingId: string;
@@ -187,4 +191,126 @@ export async function syncListingNow(input: { listingId: string; clientId: strin
   });
 
   revalidatePath(`/admin/klanten/${input.clientId}`);
+}
+
+const ISO_DATUM = /^\d{4}-\d{2}-\d{2}$/;
+
+export interface NulmetingMaandResultaat {
+  maand: number;
+  bron: 'echt' | 'stly';
+  omzet: number;
+  bezetting: number;
+  leeg: boolean;
+}
+
+export async function berekenNulmetingUitPricelabs(input: {
+  listingId: string;
+  clientId: string;
+  samenwerkingGestart: string; // 'JJJJ-MM-DD'
+}): Promise<{ jaar: number; maanden: NulmetingMaandResultaat[] }> {
+  await assertIsAdmin();
+  const supabase = await createClient();
+  const admin = createAdminClient();
+
+  if (!ISO_DATUM.test(input.samenwerkingGestart)) {
+    throw new Error('Ongeldige datum voor samenwerking gestart.');
+  }
+
+  const { data: listing, error: listingError } = await supabase
+    .from('listings')
+    .select('id, naam, pricelabs_listing_id, nulmeting(jaar, maand)')
+    .eq('id', input.listingId)
+    .single();
+
+  if (listingError) throw new Error(listingError.message);
+  if (!listing.pricelabs_listing_id) {
+    throw new Error('Koppel eerst deze accommodatie aan PriceLabs.');
+  }
+
+  const { error: updateError } = await supabase
+    .from('listings')
+    .update({ samenwerking_gestart: input.samenwerkingGestart })
+    .eq('id', input.listingId);
+  if (updateError) throw new Error(updateError.message);
+
+  const syncResultaat = await syncListingReserveringen({
+    supabase,
+    admin,
+    listing: {
+      id: listing.id,
+      pricelabs_listing_id: listing.pricelabs_listing_id,
+      nulmeting: listing.nulmeting ?? [],
+    },
+  });
+  if (!syncResultaat.succes) {
+    throw new Error(`Synchroniseren met PriceLabs is mislukt: ${syncResultaat.fout}. Nulmeting is niet berekend.`);
+  }
+
+  const [startJaarStr, startMaandStr] = input.samenwerkingGestart.split('-');
+  const startJaar = Number(startJaarStr);
+  const startMaand = Number(startMaandStr);
+
+  const bronnen = bepaalNulmetingBronnen(startJaar, startMaand);
+
+  const { data: cacheRijen, error: cacheError } = await supabase
+    .from('pricelabs_reserveringen_cache')
+    .select('listing_id, check_in, check_out, rental_revenue, total_cost, no_of_days, booking_status, booking_channel')
+    .eq('listing_id', input.listingId)
+    .gte('check_in', `${startJaar - 1}-01-01`)
+    .lte('check_in', `${startJaar}-12-31`);
+  if (cacheError) throw new Error(cacheError.message);
+
+  const perMaand = groepeerPerMaand(cacheRijen ?? []);
+
+  const maanden: NulmetingMaandResultaat[] = bronnen.map((bron) => {
+    const sleutel = `${bron.bronJaar}-${String(bron.bronMaand).padStart(2, '0')}`;
+    const rijen = perMaand[sleutel] ?? [];
+    const metrics = aggregeer(rijen, dagenInMaand(bron.bronJaar, bron.bronMaand));
+    return {
+      maand: bron.maand,
+      bron: bron.bron,
+      omzet: Math.round(metrics.omzet * 100) / 100,
+      // Defensieve clamp: nulmeting.bezetting heeft een DB check-constraint (0-100).
+      // aggregeer() zou dat in theorie kunnen overschrijden bij overlappende
+      // reserveringen; dat mag de hele berekening niet laten klappen op een
+      // constraint-violation.
+      bezetting: Math.min(100, Math.round(metrics.bezetting * 100) / 100),
+      leeg: rijen.length === 0,
+    };
+  });
+
+  const nulmetingRijen = maanden.map((m) => ({
+    listing_id: input.listingId,
+    jaar: startJaar,
+    maand: m.maand,
+    omzet: m.omzet,
+    bezetting: m.bezetting,
+    vastgesteld_op: new Date().toISOString(),
+    laatst_gecorrigeerd_op: null,
+    correctie_reden: null,
+  }));
+
+  const { error: upsertError } = await admin
+    .from('nulmeting')
+    .upsert(nulmetingRijen, { onConflict: 'listing_id,jaar,maand' });
+  if (upsertError) throw new Error(upsertError.message);
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const datumLabel = new Date(`${input.samenwerkingGestart}T00:00:00Z`).toLocaleDateString('nl-NL', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+  const { error: logError } = await supabase.from('action_log').insert({
+    listing_id: input.listingId,
+    datum: new Date().toISOString().slice(0, 10),
+    omschrijving: `Nulmeting automatisch berekend uit PriceLabs (samenwerking gestart: ${datumLabel})`,
+    type: 'nulmeting_berekend',
+    toegevoegd_door: user?.id,
+  });
+  if (logError) throw new Error(logError.message);
+
+  revalidatePath(`/admin/klanten/${input.clientId}`);
+
+  return { jaar: startJaar, maanden };
 }
