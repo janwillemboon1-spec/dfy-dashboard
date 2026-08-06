@@ -50,7 +50,12 @@ export function ListingVerwijderenDialoog({
   return (
     <Dialog open={open} onOpenChange={dialoogWisselen}>
       <DialogTrigger render={<Button variant="destructive" size="sm" />}>Verwijderen</DialogTrigger>
-      <DialogContent>
+      {/* initialFocus={false}: er staat hier geen invoerveld (in tegenstelling tot
+          KlantVerwijderenDialoog), dus zonder dit zou base-ui bij het openen focus
+          standaard naar het eerste tabbare element zetten — en dat is hier de
+          destructieve verwijderknop zelf. Eén per ongeluk ingedrukte Enter/Spatie na
+          het openen zou dan meteen verwijderen zonder bewuste klik op die knop. */}
+      <DialogContent initialFocus={false}>
         <DialogHeader>
           <DialogTitle>Accommodatie verwijderen</DialogTitle>
           <DialogDescription>
