@@ -4,6 +4,7 @@ import { NulmetingTabel } from '@/components/admin/nulmeting-tabel';
 import { ResultatenTabel } from '@/components/admin/resultaten-tabel';
 import { ActielogFormulier } from '@/components/admin/actielog-formulier';
 import { PricelabsKoppeling } from '@/components/admin/pricelabs-koppeling';
+import { SamenwerkingNulmetingForm } from '@/components/admin/samenwerking-nulmeting-form';
 
 export default async function KlantDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -30,36 +31,47 @@ export default async function KlantDetailPage({ params }: { params: Promise<{ id
         <p className="text-muted-foreground">{klant.email} · status: {klant.status}</p>
       </div>
 
-      {listings?.map((listing) => (
-        <section key={listing.id} className="space-y-4 border-t border-border pt-6">
-          <h2 className="text-lg font-medium">{listing.naam}</h2>
-          <PricelabsKoppeling
-            listingId={listing.id}
-            clientId={id}
-            pricelabsListingId={listing.pricelabs_listing_id}
-            cache={pricelabsCache ?? []}
-          />
+      {listings?.map((listing) => {
+        const nulmetingJaren = [...new Set((listing.nulmeting ?? []).map((r) => r.jaar))];
+        return (
+          <section key={listing.id} className="space-y-4 border-t border-border pt-6">
+            <h2 className="text-lg font-medium">{listing.naam}</h2>
+            <PricelabsKoppeling
+              listingId={listing.id}
+              clientId={id}
+              pricelabsListingId={listing.pricelabs_listing_id}
+              cache={pricelabsCache ?? []}
+            />
 
-          <NulmetingTabel listingId={listing.id} clientId={id} rijen={listing.nulmeting ?? []} />
-          <ResultatenTabel
-            nulmeting={listing.nulmeting ?? []}
-            actueel={listing.monthly_actuals ?? []}
-            pricelabsListingId={listing.pricelabs_listing_id}
-          />
-          <ActielogFormulier listingId={listing.id} clientId={id} />
+            <SamenwerkingNulmetingForm
+              listingId={listing.id}
+              clientId={id}
+              pricelabsListingId={listing.pricelabs_listing_id}
+              samenwerkingGestart={listing.samenwerking_gestart}
+              nulmetingJaren={nulmetingJaren}
+            />
 
-          <ul className="space-y-1 text-sm">
-            {(listing.action_log ?? [])
-              .slice()
-              .sort((a, b) => (a.datum < b.datum ? 1 : -1))
-              .map((item) => (
-                <li key={item.id} className="text-muted-foreground">
-                  {new Date(item.datum).toLocaleDateString('nl-NL')} — {item.omschrijving}
-                </li>
-              ))}
-          </ul>
-        </section>
-      ))}
+            <NulmetingTabel listingId={listing.id} clientId={id} rijen={listing.nulmeting ?? []} />
+            <ResultatenTabel
+              nulmeting={listing.nulmeting ?? []}
+              actueel={listing.monthly_actuals ?? []}
+              pricelabsListingId={listing.pricelabs_listing_id}
+            />
+            <ActielogFormulier listingId={listing.id} clientId={id} />
+
+            <ul className="space-y-1 text-sm">
+              {(listing.action_log ?? [])
+                .slice()
+                .sort((a, b) => (a.datum < b.datum ? 1 : -1))
+                .map((item) => (
+                  <li key={item.id} className="text-muted-foreground">
+                    {new Date(item.datum).toLocaleDateString('nl-NL')} — {item.omschrijving}
+                  </li>
+                ))}
+            </ul>
+          </section>
+        );
+      })}
     </main>
   );
 }
