@@ -5,6 +5,10 @@ import { ResultatenTabel } from '@/components/admin/resultaten-tabel';
 import { ActielogFormulier } from '@/components/admin/actielog-formulier';
 import { PricelabsKoppeling } from '@/components/admin/pricelabs-koppeling';
 import { SamenwerkingNulmetingForm } from '@/components/admin/samenwerking-nulmeting-form';
+import { KlantBewerkenFormulier } from '@/components/admin/klant-bewerken-formulier';
+import { KlantVerwijderenDialoog } from '@/components/admin/klant-verwijderen-dialoog';
+import { ListingBewerkenFormulier } from '@/components/admin/listing-bewerken-formulier';
+import { ListingVerwijderenDialoog } from '@/components/admin/listing-verwijderen-dialoog';
 
 export default async function KlantDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -26,16 +30,40 @@ export default async function KlantDetailPage({ params }: { params: Promise<{ id
 
   return (
     <main className="mx-auto max-w-5xl py-10 px-4 space-y-10">
-      <div>
-        <h1 className="font-serif text-2xl">{klant.naam}</h1>
-        <p className="text-muted-foreground">{klant.email} · status: {klant.status}</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-serif text-2xl">{klant.naam}</h1>
+          <p className="text-muted-foreground">{klant.email} · status: {klant.status}</p>
+        </div>
+        <div className="flex gap-2">
+          <KlantBewerkenFormulier
+            clientId={id}
+            naam={klant.naam}
+            email={klant.email}
+            telefoon={klant.telefoon}
+            status={klant.status}
+          />
+          <KlantVerwijderenDialoog clientId={id} naam={klant.naam} />
+        </div>
       </div>
 
       {listings?.map((listing) => {
         const nulmetingJaren = [...new Set((listing.nulmeting ?? []).map((r) => r.jaar))];
         return (
           <section key={listing.id} className="space-y-4 border-t border-border pt-6">
-            <h2 className="text-lg font-medium">{listing.naam}</h2>
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="text-lg font-medium">{listing.naam}</h2>
+              <div className="flex gap-2">
+                <ListingBewerkenFormulier
+                  listingId={listing.id}
+                  clientId={id}
+                  naam={listing.naam}
+                  adres={listing.adres}
+                  airbnbUrl={listing.airbnb_url}
+                />
+                <ListingVerwijderenDialoog listingId={listing.id} clientId={id} naam={listing.naam} />
+              </div>
+            </div>
             <PricelabsKoppeling
               listingId={listing.id}
               clientId={id}
