@@ -369,6 +369,45 @@ export async function wijzigKlant(input: {
   const supabase = await createClient();
   const admin = createAdminClient();
 
+  // Snelle, goedkope voorcontrole op een dubbel e-mailadres, vóórdat er iets
+  // geschreven wordt of de externe auth-aanroep plaatsvindt. De unieke index op
+  // clients (hieronder nog als vangnet voor een race condition) zou dit anders pas
+  // laten mislukken ná de clients-update — en die update gebeurt in de nieuwe volgorde
+  // hieronder juist pas ná de auth-aanroep, dus zonder deze voorcontrole zou een
+  // gewoon dubbel e-mailadres onnodig eerst een externe API-aanroep kosten.
+  const { data: bestaandeClient, error: dubbelError } = await supabase
+    .from('clients')
+    .select('id')
+    .ilike('email', input.email.trim())
+    .neq('id', input.clientId)
+    .maybeSingle();
+  if (dubbelError) throw new Error(dubbelError.message);
+  if (bestaandeClient) {
+    throw new Error('Dit e-mailadres is al in gebruik bij een andere klant.');
+  }
+
+  const { data: profiel, error: profielError } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('client_id', input.clientId)
+    .maybeSingle();
+  if (profielError) throw new Error(profielError.message);
+
+  // Eerst de externe Auth-aanroep (de meest risicovolle stap — netwerk, kan falen), pas
+  // dáárna de lokale clients/profiles-rijen bijwerken. Andersom zou een mislukte
+  // auth-aanroep clients.email (en profiles.email) al op het nieuwe adres laten staan
+  // terwijl het daadwerkelijke inlogadres (auth.users.email) nog het oude is — dan toont
+  // de app overal het nieuwe adres, terwijl de klant alleen nog met het oude kan
+  // inloggen, zonder dat dat ergens zichtbaar is. In deze volgorde is er bij een
+  // mislukte auth-aanroep nog helemaal niets weggeschreven.
+  if (profiel) {
+    const { error: authError } = await admin.auth.admin.updateUserById(profiel.id, {
+      email: input.email,
+      email_confirm: true,
+    });
+    if (authError) throw new Error(authError.message);
+  }
+
   const { error: updateError } = await supabase
     .from('clients')
     .update({
@@ -386,26 +425,7 @@ export async function wijzigKlant(input: {
     throw new Error(updateError.message);
   }
 
-  const { data: profiel, error: profielError } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('client_id', input.clientId)
-    .maybeSingle();
-  if (profielError) throw new Error(profielError.message);
-
   if (profiel) {
-    // Eerst de externe Auth-aanroep (de meest risicovolle stap — netwerk, kan falen),
-    // pas dáárna de lokale profiles.email bijwerken. Andersom (zoals eerder) zou een
-    // mislukte auth-aanroep profiles.email al op het nieuwe adres laten staan terwijl
-    // het daadwerkelijke inlogadres (auth.users.email) nog het oude is — dan toont de
-    // app overal het nieuwe adres, terwijl de klant alleen nog met het oude kan
-    // inloggen, zonder dat dat ergens zichtbaar is.
-    const { error: authError } = await admin.auth.admin.updateUserById(profiel.id, {
-      email: input.email,
-      email_confirm: true,
-    });
-    if (authError) throw new Error(authError.message);
-
     const { error: profielUpdateError } = await supabase
       .from('profiles')
       .update({ email: input.email })
