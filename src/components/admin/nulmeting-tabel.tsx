@@ -46,7 +46,7 @@ export function NulmetingTabel({
           ) : (
             <tr key={rij.id}>
               <td>{MAAND_NAMEN_KORT[rij.maand - 1]} {rij.jaar}</td>
-              <td>€ {rij.omzet.toLocaleString('nl-NL')}</td>
+              <td>€ {rij.omzet.toLocaleString('nl-NL', { maximumFractionDigits: 0 })}</td>
               <td>{rij.bezetting}%</td>
               <td>
                 <Button variant="ghost" size="sm" onClick={() => setBewerkId(rij.id)}>Corrigeren</Button>

@@ -23,8 +23,8 @@ export function ResultatenGrafiek({ data }: { data: MaandVergelijking[] }) {
         <BarChart data={grafiekData}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
           <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-          <YAxis tick={{ fontSize: 12 }} tickFormatter={(waarde: number) => `€${waarde.toLocaleString('nl-NL')}`} />
-          <Tooltip formatter={(waarde) => `€ ${Number(waarde).toLocaleString('nl-NL')}`} />
+          <YAxis tick={{ fontSize: 12 }} tickFormatter={(waarde: number) => `€${waarde.toLocaleString('nl-NL', { maximumFractionDigits: 0 })}`} />
+          <Tooltip formatter={(waarde) => `€ ${Number(waarde).toLocaleString('nl-NL', { maximumFractionDigits: 0 })}`} />
           <Legend />
           <Bar dataKey="Nulmeting" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
           <Bar dataKey="Actueel" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />

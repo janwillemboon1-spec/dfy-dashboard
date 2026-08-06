@@ -39,9 +39,9 @@ export function TrendTabel({ trend, vergelijkModus }: { trend: TrendRij[]; verge
           return (
             <tr key={t.maand} className="border-t border-border">
               <td className="px-4 py-2 font-medium">{label}</td>
-              <td className="px-4 py-2 text-right font-medium">€ {t.omzet.toLocaleString('nl-NL')}</td>
+              <td className="px-4 py-2 text-right font-medium">€ {t.omzet.toLocaleString('nl-NL', { maximumFractionDigits: 0 })}</td>
               <td className="px-4 py-2 text-right text-muted-foreground">
-                {geenVergelijkingsdata ? '—' : `€ ${vergelijkWaarde.toLocaleString('nl-NL')}`}
+                {geenVergelijkingsdata ? '—' : `€ ${vergelijkWaarde.toLocaleString('nl-NL', { maximumFractionDigits: 0 })}`}
               </td>
               <td className="px-4 py-2 text-right">
                 {isNieuw ? (

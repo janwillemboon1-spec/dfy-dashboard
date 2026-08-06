@@ -50,7 +50,7 @@ export function KanaalUitsplitsing({ kanalen }: { kanalen: Record<string, { omze
                   </span>
                 </td>
                 <td className="px-3 py-1.5 text-right">{k.boekingen}</td>
-                <td className="px-3 py-1.5 text-right font-medium">€ {k.omzet.toLocaleString('nl-NL')}</td>
+                <td className="px-3 py-1.5 text-right font-medium">€ {k.omzet.toLocaleString('nl-NL', { maximumFractionDigits: 0 })}</td>
                 <td className="px-3 py-1.5 text-right text-muted-foreground">
                   {totaal > 0 ? `${((k.omzet / totaal) * 100).toFixed(1)}%` : '—'}
                 </td>
@@ -68,7 +68,7 @@ export function KanaalUitsplitsing({ kanalen }: { kanalen: Record<string, { omze
                 <Cell key={d.naam} fill={d.kleur} />
               ))}
             </Pie>
-            <Tooltip formatter={(waarde) => `€ ${Number(waarde).toLocaleString('nl-NL')}`} />
+            <Tooltip formatter={(waarde) => `€ ${Number(waarde).toLocaleString('nl-NL', { maximumFractionDigits: 0 })}`} />
             <Legend />
           </PieChart>
         </ResponsiveContainer>

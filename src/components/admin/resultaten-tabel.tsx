@@ -51,9 +51,9 @@ export function ResultatenTabel({
               <td>
                 {MAAND_NAMEN_KORT[rij.maand - 1]} {rij.jaar}
               </td>
-              <td>€ {rij.omzet.toLocaleString('nl-NL')}</td>
+              <td>€ {rij.omzet.toLocaleString('nl-NL', { maximumFractionDigits: 0 })}</td>
               <td>{rij.bezetting}%</td>
-              <td>{actueleRij ? `€ ${actueleRij.omzet.toLocaleString('nl-NL')}` : '—'}</td>
+              <td>{actueleRij ? `€ ${actueleRij.omzet.toLocaleString('nl-NL', { maximumFractionDigits: 0 })}` : '—'}</td>
               <td>{actueleRij ? `${actueleRij.bezetting}%` : '—'}</td>
             </tr>
           );
