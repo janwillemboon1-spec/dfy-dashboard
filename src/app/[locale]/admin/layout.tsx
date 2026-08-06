@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { SignOutButton } from '@/components/sign-out-button';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -15,7 +16,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="min-h-screen bg-background">
       <header className="border-b border-border px-4 py-3 flex items-center justify-between">
         <span className="font-serif text-lg">DFY Dashboard — Admin</span>
-        <ThemeToggle />
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          <SignOutButton />
+        </div>
       </header>
       {children}
     </div>
