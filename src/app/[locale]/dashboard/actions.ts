@@ -69,11 +69,23 @@ export async function syncEigenListings(): Promise<{ succes: boolean; fout?: str
       tweeJaarTerug.setUTCFullYear(tweeJaarTerug.getUTCFullYear() - 2);
       if (vanaf > tweeJaarTerug) vanaf = tweeJaarTerug;
 
+      // Tot-datum bewust NIET "vandaag": dit dashboard toont ook lopende periodes zoals
+      // "Dit jaar" die doorlopen tot na vandaag, en al bevestigde toekomstige boekingen
+      // horen daar gewoon in mee te tellen (zo'n boeking bestaat al in PriceLabs, ook al
+      // is de check-in datum nog niet geweest). Klantmelding: augustus/september 2026 toonden
+      // vrijwel niets terwijl PriceLabs wél al boekingen had — veroorzaakt doordat de sync
+      // eerder stopte bij vandaag. Dit verschilt bewust van Fase 2a's koppelListing/
+      // syncListingNow (admin/klanten/[id]/actions.ts), die tot="huidige maand" gebruiken:
+      // dat vult monthly_actuals, wat expliciet over "reeds gerealiseerde" omzet gaat, dus
+      // toekomstige boekingen horen daar terecht niet in mee.
+      const tweeJaarVooruit = new Date();
+      tweeJaarVooruit.setUTCFullYear(tweeJaarVooruit.getUTCFullYear() + 2);
+
       const reserveringen = await fetchReservationData({
         pms: cacheRow.pms,
         listingId: listing.pricelabs_listing_id!,
         startDate: vanaf.toISOString().slice(0, 10),
-        endDate: new Date().toISOString().slice(0, 10),
+        endDate: tweeJaarVooruit.toISOString().slice(0, 10),
       });
 
       // Alle drie de guards hieronder matchen de check-constraints op

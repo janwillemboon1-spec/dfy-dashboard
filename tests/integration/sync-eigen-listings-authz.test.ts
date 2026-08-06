@@ -188,13 +188,17 @@ describe('syncEigenListings', () => {
     await admin.from('pricelabs_reserveringen_cache').delete().eq('reservation_id', 'sync-authz-reservering-1');
   });
 
-  it('haalt reserveringen minstens 2 jaar terug op, ook als de laatste nulmeting-maand recent is', async () => {
-    // Regressietest voor een bug die in productie merkbaar was: de STLY-vergelijking
-    // (Fase 2c) heeft reserveringsdata tot een jaar terug nodig, maar de backfill startte
-    // altijd pas de maand ná de laatste nulmeting-maand. Bij een recente nulmeting (bv.
-    // net onboarded) begon de sync dan pas een paar weken terug i.p.v. minstens 2 jaar,
-    // waardoor STLY leeg bleef. Deze test zet een nulmeting-maand van vorige maand neer en
-    // verifieert dat de daadwerkelijk opgevraagde startDate toch minstens ~2 jaar teruggaat.
+  it('haalt reserveringen minstens 2 jaar terug én minstens 2 jaar vooruit op, ook als de laatste nulmeting-maand recent is', async () => {
+    // Regressietest voor twee bugs die in productie merkbaar waren:
+    // 1. De STLY-vergelijking (Fase 2c) heeft reserveringsdata tot een jaar terug nodig,
+    //    maar de backfill startte altijd pas de maand ná de laatste nulmeting-maand. Bij
+    //    een recente nulmeting (bv. net onboarded) begon de sync dan pas een paar weken
+    //    terug i.p.v. minstens 2 jaar, waardoor STLY leeg bleef.
+    // 2. De sync stopte bij "vandaag", waardoor al bevestigde toekomstige boekingen nooit
+    //    werden opgehaald — een klant meldde dat augustus/september 2026 vrijwel niets
+    //    toonden terwijl PriceLabs die boekingen al had.
+    // Deze test zet een nulmeting-maand van vorige maand neer en verifieert dat de
+    // daadwerkelijk opgevraagde startDate/endDate toch minstens ~2 jaar terug/vooruit gaan.
     const suffix = `${Date.now()}-recent`;
     const nu = new Date();
     const vorigeMaand = nu.getUTCMonth() === 0
@@ -250,6 +254,11 @@ describe('syncEigenListings', () => {
       const ietsMeerDan23MaandenTerug = new Date();
       ietsMeerDan23MaandenTerug.setUTCMonth(ietsMeerDan23MaandenTerug.getUTCMonth() - 23);
       expect(opgevraagdeStartDate.getTime()).toBeLessThanOrEqual(ietsMeerDan23MaandenTerug.getTime());
+
+      const opgevraagdeEndDate = new Date(`${aanroep.endDate}T00:00:00Z`);
+      const ietsMeerDan23MaandenVooruit = new Date();
+      ietsMeerDan23MaandenVooruit.setUTCMonth(ietsMeerDan23MaandenVooruit.getUTCMonth() + 23);
+      expect(opgevraagdeEndDate.getTime()).toBeGreaterThanOrEqual(ietsMeerDan23MaandenVooruit.getTime());
     } finally {
       await admin.from('clients').delete().eq('id', clientCId);
       await admin.auth.admin.deleteUser(klantCUserId);
