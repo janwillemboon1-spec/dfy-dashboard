@@ -346,3 +346,84 @@ export async function berekenNulmetingUitPricelabs(input: {
 
   return { jaar: startJaar, maanden };
 }
+
+export async function wijzigKlant(input: {
+  clientId: string;
+  naam: string;
+  email: string;
+  telefoon: string | null;
+  status: 'onboarding' | 'actief' | 'gepauzeerd' | 'opgezegd';
+}) {
+  await assertIsAdmin();
+
+  if (!input.naam.trim()) throw new Error('Naam is verplicht.');
+  if (!input.email.trim()) throw new Error('E-mailadres is verplicht.');
+
+  const supabase = await createClient();
+  const admin = createAdminClient();
+
+  const { error: updateError } = await supabase
+    .from('clients')
+    .update({
+      naam: input.naam,
+      email: input.email,
+      telefoon: input.telefoon,
+      status: input.status,
+    })
+    .eq('id', input.clientId);
+
+  if (updateError) {
+    if (updateError.code === '23505') {
+      throw new Error('Dit e-mailadres is al in gebruik bij een andere klant.');
+    }
+    throw new Error(updateError.message);
+  }
+
+  const { data: profiel, error: profielError } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('client_id', input.clientId)
+    .maybeSingle();
+  if (profielError) throw new Error(profielError.message);
+
+  if (profiel) {
+    const { error: profielUpdateError } = await supabase
+      .from('profiles')
+      .update({ email: input.email })
+      .eq('id', profiel.id);
+    if (profielUpdateError) throw new Error(profielUpdateError.message);
+
+    const { error: authError } = await admin.auth.admin.updateUserById(profiel.id, {
+      email: input.email,
+      email_confirm: true,
+    });
+    if (authError) throw new Error(authError.message);
+  }
+
+  revalidatePath(`/admin/klanten/${input.clientId}`);
+}
+
+export async function verwijderKlant(input: { clientId: string }) {
+  await assertIsAdmin();
+  const supabase = await createClient();
+  const admin = createAdminClient();
+
+  const { data: profiel, error: profielError } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('client_id', input.clientId)
+    .maybeSingle();
+  if (profielError) throw new Error(profielError.message);
+
+  const { error: rpcError } = await admin.rpc('delete_client_cascade', {
+    target_client_id: input.clientId,
+  });
+  if (rpcError) throw new Error(rpcError.message);
+
+  if (profiel) {
+    const { error: authError } = await admin.auth.admin.deleteUser(profiel.id);
+    if (authError) throw new Error(authError.message);
+  }
+
+  revalidatePath('/admin/klanten');
+}
