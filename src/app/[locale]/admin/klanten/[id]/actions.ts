@@ -227,12 +227,6 @@ export async function berekenNulmetingUitPricelabs(input: {
     throw new Error('Koppel eerst deze accommodatie aan PriceLabs.');
   }
 
-  const { error: updateError } = await supabase
-    .from('listings')
-    .update({ samenwerking_gestart: input.samenwerkingGestart })
-    .eq('id', input.listingId);
-  if (updateError) throw new Error(updateError.message);
-
   const syncResultaat = await syncListingReserveringen({
     supabase,
     admin,
@@ -270,11 +264,21 @@ export async function berekenNulmetingUitPricelabs(input: {
       maand: bron.maand,
       bron: bron.bron,
       omzet: Math.round(metrics.omzet * 100) / 100,
-      // Defensieve clamp: nulmeting.bezetting heeft een DB check-constraint (0-100).
-      // aggregeer() zou dat in theorie kunnen overschrijden bij overlappende
-      // reserveringen; dat mag de hele berekening niet laten klappen op een
-      // constraint-violation.
-      bezetting: Math.min(100, Math.round(metrics.bezetting * 100) / 100),
+      bezetting: (() => {
+        // Defensieve clamp: nulmeting.bezetting heeft een DB check-constraint (0-100).
+        // aggregeer() zou dat in theorie kunnen overschrijden bij overlappende
+        // reserveringen; dat mag de hele berekening niet laten klappen op een
+        // constraint-violation. Wél zichtbaar loggen — een clamp die stilzwijgend
+        // gebeurt, verbergt een reëel datakwaliteitsprobleem (overlappende of
+        // dubbel-getelde reserveringen) i.p.v. het te signaleren.
+        const afgerond = Math.round(metrics.bezetting * 100) / 100;
+        if (afgerond > 100) {
+          console.warn(
+            `[berekenNulmetingUitPricelabs] bezetting ${afgerond}% voor ${bron.bronJaar}-${String(bron.bronMaand).padStart(2, '0')} (listing ${input.listingId}) overschrijdt 100% — geclampt. Mogelijk overlappende reserveringen.`
+          );
+        }
+        return Math.min(100, afgerond);
+      })(),
       leeg: rijen.length === 0,
     };
   });
@@ -294,6 +298,17 @@ export async function berekenNulmetingUitPricelabs(input: {
     .from('nulmeting')
     .upsert(nulmetingRijen, { onConflict: 'listing_id,jaar,maand' });
   if (upsertError) throw new Error(upsertError.message);
+
+  // Pas ná een geslaagde nulmeting-upsert wegschrijven, niet ervóór: anders zou een
+  // mislukte sync of berekening (bv. syncListingReserveringen die faalt) alsnog een
+  // samenwerking_gestart-datum achterlaten zonder dat de nulmeting daadwerkelijk is
+  // (her)berekend — een klant-detailpagina die dan een datum toont die suggereert dat
+  // de nulmeting al klopt, terwijl dat niet zo is.
+  const { error: updateError } = await supabase
+    .from('listings')
+    .update({ samenwerking_gestart: input.samenwerkingGestart })
+    .eq('id', input.listingId);
+  if (updateError) throw new Error(updateError.message);
 
   const { data: { user } } = await supabase.auth.getUser();
   const datumLabel = new Date(`${input.samenwerkingGestart}T00:00:00Z`).toLocaleDateString('nl-NL', {
