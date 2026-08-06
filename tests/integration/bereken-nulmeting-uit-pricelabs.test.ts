@@ -213,4 +213,83 @@ describe('berekenNulmetingUitPricelabs', () => {
       .eq('type', 'nulmeting_berekend');
     expect(logRijen).toHaveLength(1);
   });
+
+  it('ruimt een oude, over twee kalenderjaren gespreide nulmeting-baseline volledig op', async () => {
+    // Regressietest voor een bug gevonden bij de finale whole-branch review: een via de
+    // onboarding-CSV aangemaakte baseline (berekenNulmetingMaanden in
+    // parse-clients-csv.ts) start vaak niet in januari en spant dan bewust twee
+    // kalenderjaren (bv. juli t/m juni). De klant-dashboardconsumenten van deze tabel
+    // (nulmetingAlsMetrics, berekenMaandVergelijkingen) matchen uitsluitend op
+    // maandnummer, niet op jaar — als berekenNulmetingUitPricelabs alleen upsert op het
+    // nieuwe startjaar, blijven de rijen van het andere kalenderjaar van de oude baseline
+    // staan, en zouden overlappende maandnummers dubbel meetellen bij het uitlezen.
+    const suffix = `${Date.now()}-cross-year`;
+
+    const { data: client } = await admin
+      .from('clients')
+      .insert({ naam: 'Cross-year Nulmeting Klant', email: `nulmeting-cross-year-${suffix}@test.local` })
+      .select()
+      .single();
+    const crossYearClientId = client!.id;
+
+    const { data: listing } = await admin
+      .from('listings')
+      .insert({ client_id: crossYearClientId, naam: 'Cross-year Listing', pricelabs_listing_id: `pl-${suffix}` })
+      .select()
+      .single();
+    const crossYearListingId = listing!.id;
+
+    await admin
+      .from('pricelabs_listings_cache')
+      .insert({ pricelabs_listing_id: `pl-${suffix}`, naam: 'PL Listing', pms: 'hostaway' });
+
+    // Oude CSV-baseline: juli 2025 t/m juni 2026 (12 maanden, twee kalenderjaren).
+    const oudeBaseline = Array.from({ length: 12 }, (_, i) => {
+      const totaal = 6 + i; // start bij maand 7 (juli, index 6)
+      const jaar = 2025 + Math.floor(totaal / 12);
+      const maand = (totaal % 12) + 1;
+      return { listing_id: crossYearListingId, jaar, maand, omzet: 100, bezetting: 10 };
+    });
+    await admin.from('nulmeting').insert(oudeBaseline);
+
+    const { data: adminUserRes } = await admin.auth.admin.createUser({
+      email: `nulmeting-cross-year-admin-${suffix}@test.local`,
+      email_confirm: true,
+      password: wachtwoord,
+    });
+    const crossYearAdminUserId = adminUserRes!.user!.id;
+    await admin.from('profiles').insert({
+      id: crossYearAdminUserId,
+      role: 'admin',
+      email: `nulmeting-cross-year-admin-${suffix}@test.local`,
+      naam: 'Admin',
+    });
+
+    try {
+      activeCookieStore = await loginAlsCookieStore(`nulmeting-cross-year-admin-${suffix}@test.local`, wachtwoord);
+
+      await berekenNulmetingUitPricelabs({
+        listingId: crossYearListingId,
+        clientId: crossYearClientId,
+        samenwerkingGestart: '2026-03-15',
+      });
+
+      const { data: alleRijen } = await admin
+        .from('nulmeting')
+        .select('jaar, maand')
+        .eq('listing_id', crossYearListingId);
+
+      // Precies 12 rijen over, allemaal in het nieuwe startjaar — geen enkele rij meer
+      // van de oude 2025-helft van de baseline, en geen enkel maandnummer dat dubbel
+      // voorkomt.
+      expect(alleRijen).toHaveLength(12);
+      expect(alleRijen!.every((r) => r.jaar === 2026)).toBe(true);
+      const maandnummers = alleRijen!.map((r) => r.maand).sort((a, b) => a - b);
+      expect(maandnummers).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+    } finally {
+      await admin.from('clients').delete().eq('id', crossYearClientId);
+      await admin.auth.admin.deleteUser(crossYearAdminUserId);
+      await admin.from('pricelabs_listings_cache').delete().eq('pricelabs_listing_id', `pl-${suffix}`);
+    }
+  });
 });

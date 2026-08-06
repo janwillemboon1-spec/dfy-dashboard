@@ -294,6 +294,23 @@ export async function berekenNulmetingUitPricelabs(input: {
     correctie_reden: null,
   }));
 
+  // Een nulmeting-baseline die via de onboarding-CSV is aangemaakt (berekenNulmetingMaanden
+  // in parse-clients-csv.ts) start vaak niet in januari en spant dan bewust twee
+  // kalenderjaren (bv. juli t/m juni). De klant-dashboardconsumenten van deze tabel
+  // (nulmetingAlsMetrics hier, berekenMaandVergelijkingen in bereken-resultaten.ts) matchen
+  // uitsluitend op maandnummer, niet op jaar — als hier alleen op (listing_id, startJaar,
+  // maand) geüpsert wordt, blijven de rijen van het andere kalenderjaar van de oude baseline
+  // staan. Voor de overlappende maandnummers zou dat dan twee rijen opleveren die bij het
+  // uitlezen stilzwijgend bij elkaar opgeteld worden (dubbele omzet/bezetting). Daarom eerst
+  // elke bestaande nulmeting-rij van déze listing buiten het nieuwe startjaar verwijderen,
+  // zodat er na deze berekening weer precies één rij per maandnummer over is.
+  const { error: deleteError } = await admin
+    .from('nulmeting')
+    .delete()
+    .eq('listing_id', input.listingId)
+    .neq('jaar', startJaar);
+  if (deleteError) throw new Error(deleteError.message);
+
   const { error: upsertError } = await admin
     .from('nulmeting')
     .upsert(nulmetingRijen, { onConflict: 'listing_id,jaar,maand' });
