@@ -34,8 +34,19 @@ export function KlantVerwijderenDialoog({ clientId, naam }: { clientId: string; 
     });
   }
 
+  function dialoogWisselen(nieuweOpen: boolean) {
+    setOpen(nieuweOpen);
+    if (nieuweOpen) {
+      // Zelfde reden als bij KlantBewerkenFormulier: deze component blijft gemonteerd
+      // terwijl alleen de dialoog zelf sluit/opent, dus zonder reset zou een eerder
+      // getypte bevestiging of foutmelding blijven staan.
+      setBevestiging('');
+      setFoutmelding(null);
+    }
+  }
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={dialoogWisselen}>
       <DialogTrigger render={<Button variant="destructive" size="sm" />}>Verwijderen</DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -58,7 +69,7 @@ export function KlantVerwijderenDialoog({ clientId, naam }: { clientId: string; 
           <Button
             variant="destructive"
             size="sm"
-            disabled={isPending || bevestiging !== naam}
+            disabled={isPending || bevestiging.trim() !== naam.trim()}
             onClick={verwijderen}
           >
             {isPending ? 'Bezig...' : 'Definitief verwijderen'}

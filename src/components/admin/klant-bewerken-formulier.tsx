@@ -40,7 +40,13 @@ export function KlantBewerkenFormulier({
     setFoutmelding(null);
     startTransition(async () => {
       try {
-        await wijzigKlant({ clientId, naam, email, telefoon: telefoon.trim() || null, status });
+        await wijzigKlant({
+          clientId,
+          naam: naam.trim(),
+          email: email.trim(),
+          telefoon: telefoon.trim() || null,
+          status,
+        });
         setOpen(false);
       } catch (error) {
         setFoutmelding((error as Error).message);
@@ -48,8 +54,23 @@ export function KlantBewerkenFormulier({
     });
   }
 
+  function dialoogWisselen(nieuweOpen: boolean) {
+    setOpen(nieuweOpen);
+    if (nieuweOpen) {
+      // Herstel naar de huidige, opgeslagen waarden bij elke keer openen — anders
+      // blijven een niet-opgeslagen bewerking of een oude foutmelding van de vorige
+      // keer zichtbaar staan (deze component blijft namelijk gemonteerd terwijl alleen
+      // de dialoog zelf sluit/opent, dus de state reset niet vanzelf).
+      setNaam(huidigeNaam);
+      setEmail(huidigeEmail);
+      setTelefoon(huidigeTelefoon ?? '');
+      setStatus(huidigeStatus);
+      setFoutmelding(null);
+    }
+  }
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={dialoogWisselen}>
       <DialogTrigger render={<Button variant="outline" size="sm" />}>Bewerken</DialogTrigger>
       <DialogContent>
         <DialogHeader>
