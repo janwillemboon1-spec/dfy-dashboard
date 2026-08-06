@@ -56,9 +56,18 @@ export async function syncEigenListings(): Promise<{ succes: boolean; fout?: str
       } else {
         vanaf = new Date();
       }
+      // De STLY-vergelijking (Fase 2c) heeft reserveringsniveau-data nodig van tot een
+      // jaar terug — als de laatste nulmeting-maand recent is (bv. net onboarded), start
+      // "de maand na de nulmeting" te dichtbij om STLY te kunnen vullen. Daarom hier altijd
+      // minstens 2 jaar terug ophalen, ook als dat vóór het einde van de nulmeting ligt: dat
+      // overlapt onschadelijk met de nulmeting (huidig/STLY en nulmeting worden nooit bij
+      // elkaar opgeteld, zie omzet-aggregatie.ts en nulmeting-metrics.ts). Voorheen stond
+      // hier de omgekeerde vergelijking (`vanaf < tweeJaarTerug`), die alleen een bovengrens
+      // op de terugkijkperiode zette i.p.v. de ondergrens die STLY nodig heeft — daardoor
+      // kwam er bij een recente nulmeting vrijwel geen STLY-data binnen.
       const tweeJaarTerug = new Date();
       tweeJaarTerug.setUTCFullYear(tweeJaarTerug.getUTCFullYear() - 2);
-      if (vanaf < tweeJaarTerug) vanaf = tweeJaarTerug;
+      if (vanaf > tweeJaarTerug) vanaf = tweeJaarTerug;
 
       const reserveringen = await fetchReservationData({
         pms: cacheRow.pms,

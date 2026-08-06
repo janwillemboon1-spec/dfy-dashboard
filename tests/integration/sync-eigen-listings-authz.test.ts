@@ -187,4 +187,73 @@ describe('syncEigenListings', () => {
 
     await admin.from('pricelabs_reserveringen_cache').delete().eq('reservation_id', 'sync-authz-reservering-1');
   });
+
+  it('haalt reserveringen minstens 2 jaar terug op, ook als de laatste nulmeting-maand recent is', async () => {
+    // Regressietest voor een bug die in productie merkbaar was: de STLY-vergelijking
+    // (Fase 2c) heeft reserveringsdata tot een jaar terug nodig, maar de backfill startte
+    // altijd pas de maand ná de laatste nulmeting-maand. Bij een recente nulmeting (bv.
+    // net onboarded) begon de sync dan pas een paar weken terug i.p.v. minstens 2 jaar,
+    // waardoor STLY leeg bleef. Deze test zet een nulmeting-maand van vorige maand neer en
+    // verifieert dat de daadwerkelijk opgevraagde startDate toch minstens ~2 jaar teruggaat.
+    const suffix = `${Date.now()}-recent`;
+    const nu = new Date();
+    const vorigeMaand = nu.getUTCMonth() === 0
+      ? { jaar: nu.getUTCFullYear() - 1, maand: 12 }
+      : { jaar: nu.getUTCFullYear(), maand: nu.getUTCMonth() };
+
+    const { data: clientC } = await admin
+      .from('clients')
+      .insert({ naam: 'Sync Authz Klant C', email: `sync-authz-klant-c-${suffix}@test.local` })
+      .select()
+      .single();
+    const clientCId = clientC!.id;
+
+    const { data: klantCListing } = await admin
+      .from('listings')
+      .insert({ client_id: clientCId, naam: 'Gekoppelde Listing C', pricelabs_listing_id: `pl-sync-authz-${suffix}` })
+      .select()
+      .single();
+    const klantCListingId = klantCListing!.id;
+
+    await admin.from('nulmeting').insert({
+      listing_id: klantCListingId,
+      jaar: vorigeMaand.jaar,
+      maand: vorigeMaand.maand,
+      omzet: 1000,
+      bezetting: 50,
+    });
+    await admin
+      .from('pricelabs_listings_cache')
+      .insert({ pricelabs_listing_id: `pl-sync-authz-${suffix}`, naam: 'PL Listing C', pms: 'hostaway' });
+
+    const klantCEmail = `sync-authz-klant-c-${suffix}@test.local`;
+    const { data: userC } = await admin.auth.admin.createUser({
+      email: klantCEmail,
+      email_confirm: true,
+      password: wachtwoord,
+    });
+    const klantCUserId = userC!.user!.id;
+    await admin
+      .from('profiles')
+      .insert({ id: klantCUserId, role: 'klant', client_id: clientCId, email: klantCEmail, naam: 'Klant C' });
+
+    try {
+      vi.mocked(fetchReservationData).mockClear();
+      vi.mocked(fetchReservationData).mockResolvedValueOnce([]);
+      activeCookieStore = await loginAlsCookieStore(klantCEmail, wachtwoord);
+
+      await syncEigenListings();
+
+      expect(fetchReservationData).toHaveBeenCalledTimes(1);
+      const aanroep = vi.mocked(fetchReservationData).mock.calls[0][0];
+      const opgevraagdeStartDate = new Date(`${aanroep.startDate}T00:00:00Z`);
+      const ietsMeerDan23MaandenTerug = new Date();
+      ietsMeerDan23MaandenTerug.setUTCMonth(ietsMeerDan23MaandenTerug.getUTCMonth() - 23);
+      expect(opgevraagdeStartDate.getTime()).toBeLessThanOrEqual(ietsMeerDan23MaandenTerug.getTime());
+    } finally {
+      await admin.from('clients').delete().eq('id', clientCId);
+      await admin.auth.admin.deleteUser(klantCUserId);
+      await admin.from('pricelabs_listings_cache').delete().eq('pricelabs_listing_id', `pl-sync-authz-${suffix}`);
+    }
+  });
 });
