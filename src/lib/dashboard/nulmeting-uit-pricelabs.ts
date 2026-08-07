@@ -1,26 +1,24 @@
 export interface NulmetingBron {
-  maand: number; // doelmaand (1-12) binnen het startjaar van de nulmeting
-  bron: 'echt' | 'stly';
-  bronJaar: number;
-  bronMaand: number;
+  jaar: number;
+  maand: number;
 }
 
-// Voor maanden t/m de startmaand van de samenwerking is de echte omzet van dat kalenderjaar
-// zelf al bekend (de accommodatie is dan al gekoppeld en gesynchroniseerd) en dus bruikbaar
-// als nulmeting. Voor maanden ná de startmaand bestaat er nog geen "wat had er zonder ons
-// gebeurd"-cijfer — daarvoor wordt STLY (dezelfde maand, één jaar eerder) als schatting
-// gebruikt. Het omslagpunt ligt bewust vast op de startmaand zelf, niet op "vandaag": ook als
-// deze functie maanden of jaren na de startdatum wordt aangeroepen, zou "vandaag" als
-// omslagpunt data ná de samenwerkingsstart als nulmeting meetellen — en die data is dan al
-// door de DFY-begeleiding beïnvloed, dus ongeschikt als baseline.
+// De 12 kalendermaanden die direct voorafgaan aan (startJaar, startMaand), chronologisch
+// (oudste eerst). Voor start = september 2026 (9, 2026): augustus 2026 t/m januari 2026,
+// gevolgd door december 2025 t/m september 2025 — 12 maanden, altijd al verstreken op het
+// moment dat de samenwerking start, dus allemaal bruikbaar als échte PriceLabs-data. Geen
+// STLY-schatting meer nodig: er zit per definitie geen toekomstige maand in dit venster.
 export function bepaalNulmetingBronnen(startJaar: number, startMaand: number): NulmetingBron[] {
   const bronnen: NulmetingBron[] = [];
-  for (let maand = 1; maand <= 12; maand++) {
-    if (maand <= startMaand) {
-      bronnen.push({ maand, bron: 'echt', bronJaar: startJaar, bronMaand: maand });
-    } else {
-      bronnen.push({ maand, bron: 'stly', bronJaar: startJaar - 1, bronMaand: maand });
+  let jaar = startJaar;
+  let maand = startMaand;
+  for (let i = 0; i < 12; i++) {
+    maand -= 1;
+    if (maand === 0) {
+      maand = 12;
+      jaar -= 1;
     }
+    bronnen.unshift({ jaar, maand });
   }
   return bronnen;
 }
