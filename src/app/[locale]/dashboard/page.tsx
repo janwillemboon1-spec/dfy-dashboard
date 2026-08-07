@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { berekenMaandVergelijkingen, berekenWowCijfer, laatste12Maanden } from '@/lib/dashboard/bereken-resultaten';
+import { berekenMaandVergelijkingen, berekenWowCijfer } from '@/lib/dashboard/bereken-resultaten';
 import { WowCijfer } from '@/components/dashboard/wow-cijfer';
 import { OmzetDashboard } from '@/components/dashboard/omzet-dashboard';
 import { ResultatenGrafiek } from '@/components/dashboard/resultaten-grafiek';
@@ -35,16 +35,15 @@ export default async function DashboardPage() {
 
   const { data: listings, error: listingsError } = await supabase
     .from('listings')
-    .select('nulmeting(jaar, maand, omzet), monthly_actuals(jaar, maand, omzet), action_log(id, datum, omschrijving)');
+    .select('samenwerking_gestart, nulmeting(jaar, maand, omzet), monthly_actuals(jaar, maand, omzet), action_log(id, datum, omschrijving)');
   if (listingsError) console.error('Kon listings niet laden voor dashboard:', listingsError);
 
-  const vergelijkingen = laatste12Maanden(
-    berekenMaandVergelijkingen(
-      (listings ?? []).map((listing) => ({
-        nulmeting: listing.nulmeting ?? [],
-        monthlyActuals: listing.monthly_actuals ?? [],
-      }))
-    )
+  const vergelijkingen = berekenMaandVergelijkingen(
+    (listings ?? []).map((listing) => ({
+      nulmeting: listing.nulmeting ?? [],
+      monthlyActuals: listing.monthly_actuals ?? [],
+      samenwerkingGestart: listing.samenwerking_gestart,
+    }))
   );
   const wowCijfer = berekenWowCijfer(vergelijkingen);
   const actielogItems = (listings ?? []).flatMap((listing) => listing.action_log ?? []);

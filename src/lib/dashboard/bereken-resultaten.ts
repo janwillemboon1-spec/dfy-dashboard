@@ -13,6 +13,11 @@ export interface ActueleRij {
 export interface ListingData {
   nulmeting: NulmetingRij[];
   monthlyActuals: ActueleRij[];
+  // 'JJJJ-MM-DD', wordt alleen gezet door de PriceLabs-nulmetingberekening
+  // (berekenNulmetingUitPricelabs). null voor accommodaties die nog geen nulmeting via
+  // die flow hebben (bv. nog CSV-onboarding-only) — voor die accommodaties wordt geen
+  // cutoff toegepast, zie de toelichting bij de filter hieronder.
+  samenwerkingGestart: string | null;
 }
 
 export interface MaandVergelijking {
@@ -31,7 +36,25 @@ export function berekenMaandVergelijkingen(listings: ListingData[]): MaandVergel
       nulmetingPerMaandnummer.set(rij.maand, rij.omzet);
     }
 
+    // Elke accommodatie heeft haar eigen samenwerking_gestart — niet de klant als geheel.
+    // Bij meerdere accommodaties met verschillende startmaanden telt een accommodatie die
+    // al langer meedraait dus over meer maanden mee dan een net gestarte: dat is bewust,
+    // "extra omzet t.o.v. vóór Boon Vakantieverhuur" is een per-accommodatie-vraag die pas
+    // daarna wordt opgeteld. "Vanaf" is inclusief: de startmaand zelf telt al mee.
+    let cutoff: { jaar: number; maand: number } | null = null;
+    if (listing.samenwerkingGestart) {
+      const [jaarStr, maandStr] = listing.samenwerkingGestart.split('-');
+      cutoff = { jaar: Number(jaarStr), maand: Number(maandStr) };
+    }
+
     for (const actueleRij of listing.monthlyActuals) {
+      if (
+        cutoff &&
+        (actueleRij.jaar < cutoff.jaar || (actueleRij.jaar === cutoff.jaar && actueleRij.maand < cutoff.maand))
+      ) {
+        continue;
+      }
+
       const nulmetingOmzet = nulmetingPerMaandnummer.get(actueleRij.maand);
       if (nulmetingOmzet === undefined) {
         // Kan voorkomen als de nulmeting niet alle 12 maandnummers dekt (bv. een
@@ -60,12 +83,6 @@ export function berekenMaandVergelijkingen(listings: ListingData[]): MaandVergel
   }
 
   return Array.from(perMaand.values()).sort((a, b) => a.jaar - b.jaar || a.maand - b.maand);
-}
-
-// Verwacht chronologisch gesorteerde invoer (zoals berekenMaandVergelijkingen die oplevert) —
-// sorteert zelf niet opnieuw, slice(-12) op ongesorteerde data geeft geen zinnig resultaat.
-export function laatste12Maanden(vergelijkingen: MaandVergelijking[]): MaandVergelijking[] {
-  return vergelijkingen.slice(-12);
 }
 
 export function berekenWowCijfer(vergelijkingen: MaandVergelijking[]): number | null {
