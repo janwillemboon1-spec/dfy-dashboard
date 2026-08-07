@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { aggregeer, dagenInPeriode, groepeerPerMaand, groepeerPerListing } from '@/lib/dashboard/omzet-aggregatie';
+import { aggregeer, dagenInPeriode, groepeerPerListing } from '@/lib/dashboard/omzet-aggregatie';
 import { nulmetingAlsMetrics, type NulmetingRij } from '@/lib/dashboard/nulmeting-metrics';
 
 function shiftJaar(datum: string, jaren: number): string {
@@ -74,13 +74,13 @@ export async function GET(request: NextRequest) {
     supabase
       .from('pricelabs_reserveringen_cache')
       .select('listing_id, check_in, check_out, rental_revenue, total_cost, no_of_days, booking_status, booking_channel')
-      .gte('check_in', start)
-      .lte('check_in', eind),
+      .lte('check_in', eind)
+      .gt('check_out', start),
     supabase
       .from('pricelabs_reserveringen_cache')
       .select('listing_id, check_in, check_out, rental_revenue, total_cost, no_of_days, booking_status, booking_channel')
-      .gte('check_in', stlyStart)
-      .lte('check_in', stlyEind),
+      .lte('check_in', stlyEind)
+      .gt('check_out', stlyStart),
   ]);
   if (listingsError) return NextResponse.json({ error: listingsError.message }, { status: 500 });
   if (huidigeError) return NextResponse.json({ error: huidigeError.message }, { status: 500 });
@@ -95,16 +95,28 @@ export async function GET(request: NextRequest) {
 
   const alleNulmeting: NulmetingRij[] = (listings ?? []).flatMap((l) => l.nulmeting ?? []);
 
-  const portfolio = aggregeer(huidigeRijen ?? [], dagen * aantalListings);
-  const portfolioStly = aggregeer(stlyRijen ?? [], stlyDagen * aantalListings);
+  // aggregeer() gebruikt een exclusieve periodeEind (net als check_out) om de overlap per
+  // reservering te bepalen — eind/stlyEind zelf zijn de laatste inclusieve kalenderdag
+  // (dagenInPeriode telt daarom ook inclusief), dus hier +1 dag zodat een reservering die
+  // op eind zelf incheckt niet ten onrechte buiten de periode valt.
+  function exclusieveGrens(datum: string): string {
+    const d = new Date(`${datum}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + 1);
+    return d.toISOString().slice(0, 10);
+  }
+  const eindExclusief = exclusieveGrens(eind);
+  const stlyEindExclusief = exclusieveGrens(stlyEind);
+
+  const portfolio = aggregeer(huidigeRijen ?? [], start, eindExclusief, dagen * aantalListings);
+  const portfolioStly = aggregeer(stlyRijen ?? [], stlyStart, stlyEindExclusief, stlyDagen * aantalListings);
   const portfolioNulmeting = periodeType === 'vast' ? nulmetingAlsMetrics(alleNulmeting, start, eind) : null;
 
   const perListingHuidig = groepeerPerListing(huidigeRijen ?? []);
   const perListingStly = groepeerPerListing(stlyRijen ?? []);
 
   const listingsUitkomst = (listings ?? []).map((l) => {
-    const metrics = aggregeer(perListingHuidig[l.id] ?? [], dagen);
-    const stlyMetrics = aggregeer(perListingStly[l.id] ?? [], stlyDagen);
+    const metrics = aggregeer(perListingHuidig[l.id] ?? [], start, eindExclusief, dagen);
+    const stlyMetrics = aggregeer(perListingStly[l.id] ?? [], stlyStart, stlyEindExclusief, stlyDagen);
     const nulmetingMetrics = periodeType === 'vast' ? nulmetingAlsMetrics(l.nulmeting ?? [], start, eind) : null;
     return {
       listing_id: l.id,
@@ -123,9 +135,20 @@ export async function GET(request: NextRequest) {
     cursor.setUTCMonth(cursor.getUTCMonth() + 1);
   }
 
-  const huidigPerMaand = groepeerPerMaand(huidigeRijen ?? []);
-  const stlyPerMaand = groepeerPerMaand(stlyRijen ?? []);
+  function maandGrenzen(maand: string): { start: string; eind: string } {
+    const [jaarStr, maandNummerStr] = maand.split('-');
+    const jaar = Number(jaarStr);
+    const maandNummer = Number(maandNummerStr);
+    const volgende = maandNummer === 12 ? { jaar: jaar + 1, maand: 1 } : { jaar, maand: maandNummer + 1 };
+    return {
+      start: `${maand}-01`,
+      eind: `${volgende.jaar}-${String(volgende.maand).padStart(2, '0')}-01`,
+    };
+  }
 
+  // Hergebruikt de al overlap-gefetchte huidigeRijen/stlyRijen (i.p.v. per maand vooraf te
+  // bucketen): aggregeer() filtert zelf al op overlap met [maandStart, maandEind), dus een
+  // reservering die een maandgrens overschrijdt telt vanzelf naar rato mee in beide maanden.
   const trend = trendMaanden.map((maand) => {
     const stlyMaand = shiftJaar(`${maand}-01`, -1).slice(0, 7);
     const [, maandNummerStr] = maand.split('-');
@@ -133,10 +156,12 @@ export async function GET(request: NextRequest) {
     const omzetNulmeting = periodeType === 'vast'
       ? alleNulmeting.filter((r) => r.maand === maandNummer).reduce((s, r) => s + r.omzet, 0)
       : null;
+    const { start: maandStart, eind: maandEind } = maandGrenzen(maand);
+    const { start: stlyMaandStart, eind: stlyMaandEind } = maandGrenzen(stlyMaand);
     return {
       maand,
-      omzet: aggregeer(huidigPerMaand[maand] ?? [], 30).omzet,
-      omzetStly: aggregeer(stlyPerMaand[stlyMaand] ?? [], 30).omzet,
+      omzet: aggregeer(huidigeRijen ?? [], maandStart, maandEind, 30).omzet,
+      omzetStly: aggregeer(stlyRijen ?? [], stlyMaandStart, stlyMaandEind, 30).omzet,
       omzetNulmeting,
     };
   });
