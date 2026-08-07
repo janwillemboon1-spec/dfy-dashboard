@@ -196,8 +196,8 @@ export async function syncListingNow(input: { listingId: string; clientId: strin
 const ISO_DATUM = /^\d{4}-\d{2}-\d{2}$/;
 
 export interface NulmetingMaandResultaat {
+  jaar: number;
   maand: number;
-  bron: 'echt' | 'stly';
   omzet: number;
   bezetting: number;
   leeg: boolean;
@@ -207,7 +207,7 @@ export async function berekenNulmetingUitPricelabs(input: {
   listingId: string;
   clientId: string;
   samenwerkingGestart: string; // 'JJJJ-MM-DD'
-}): Promise<{ jaar: number; maanden: NulmetingMaandResultaat[] }> {
+}): Promise<{ startJaar: number; startMaand: number; maanden: NulmetingMaandResultaat[] }> {
   await assertIsAdmin();
   const supabase = await createClient();
   const admin = createAdminClient();
@@ -255,15 +255,15 @@ export async function berekenNulmetingUitPricelabs(input: {
   if (cacheError) throw new Error(cacheError.message);
 
   const maanden: NulmetingMaandResultaat[] = bronnen.map((bron) => {
-    const { jaar: volgJaar, maand: volgMaand } = volgendeMaand(bron.bronJaar, bron.bronMaand);
-    const maandStart = `${bron.bronJaar}-${String(bron.bronMaand).padStart(2, '0')}-01`;
+    const { jaar: volgJaar, maand: volgMaand } = volgendeMaand(bron.jaar, bron.maand);
+    const maandStart = `${bron.jaar}-${String(bron.maand).padStart(2, '0')}-01`;
     const maandEind = `${volgJaar}-${String(volgMaand).padStart(2, '0')}-01`;
     const rijen = (cacheRijen ?? []).filter((r) => r.check_in <= maandEind && r.check_out > maandStart);
-    const metrics = aggregeer(rijen, maandStart, maandEind, dagenInMaand(bron.bronJaar, bron.bronMaand));
+    const metrics = aggregeer(rijen, maandStart, maandEind, dagenInMaand(bron.jaar, bron.maand));
     const leeg = rijen.length === 0;
     return {
+      jaar: bron.jaar,
       maand: bron.maand,
-      bron: bron.bron,
       omzet: Math.round(metrics.omzet * 100) / 100,
       bezetting: (() => {
         // Defensieve clamp: nulmeting.bezetting heeft een DB check-constraint (0-100).
@@ -275,7 +275,7 @@ export async function berekenNulmetingUitPricelabs(input: {
         const afgerond = Math.round(metrics.bezetting * 100) / 100;
         if (afgerond > 100) {
           console.warn(
-            `[berekenNulmetingUitPricelabs] bezetting ${afgerond}% voor ${bron.bronJaar}-${String(bron.bronMaand).padStart(2, '0')} (listing ${input.listingId}) overschrijdt 100% — geclampt. Mogelijk overlappende reserveringen.`
+            `[berekenNulmetingUitPricelabs] bezetting ${afgerond}% voor ${bron.jaar}-${String(bron.maand).padStart(2, '0')} (listing ${input.listingId}) overschrijdt 100% — geclampt. Mogelijk overlappende reserveringen.`
           );
         }
         return Math.min(100, afgerond);
@@ -286,7 +286,7 @@ export async function berekenNulmetingUitPricelabs(input: {
 
   const nulmetingRijen = maanden.map((m) => ({
     listing_id: input.listingId,
-    jaar: startJaar,
+    jaar: m.jaar,
     maand: m.maand,
     omzet: m.omzet,
     bezetting: m.bezetting,
@@ -295,21 +295,18 @@ export async function berekenNulmetingUitPricelabs(input: {
     correctie_reden: null,
   }));
 
-  // Een nulmeting-baseline die via de onboarding-CSV is aangemaakt (berekenNulmetingMaanden
-  // in parse-clients-csv.ts) start vaak niet in januari en spant dan bewust twee
-  // kalenderjaren (bv. juli t/m juni). De klant-dashboardconsumenten van deze tabel
-  // (nulmetingAlsMetrics hier, berekenMaandVergelijkingen in bereken-resultaten.ts) matchen
-  // uitsluitend op maandnummer, niet op jaar — als hier alleen op (listing_id, startJaar,
-  // maand) geüpsert wordt, blijven de rijen van het andere kalenderjaar van de oude baseline
-  // staan. Voor de overlappende maandnummers zou dat dan twee rijen opleveren die bij het
-  // uitlezen stilzwijgend bij elkaar opgeteld worden (dubbele omzet/bezetting). Daarom eerst
-  // elke bestaande nulmeting-rij van déze listing buiten het nieuwe startjaar verwijderen,
-  // zodat er na deze berekening weer precies één rij per maandnummer over is.
+  // Een nulmeting is altijd een complete 12-maands-vervanging, nooit een gedeeltelijke
+  // aanvulling: het rollende venster (bepaalNulmetingBronnen) kan van berekening tot
+  // berekening andere kalenderjaren/maanden beslaan (bv. een eerdere berekening met een
+  // andere startmaand), en elke rij wordt nu onder zijn eigen échte kalenderjaar opgeslagen
+  // i.p.v. onder één vast ankerjaar. Daarom eerst onvoorwaardelijk alle bestaande
+  // nulmeting-rijen van déze listing verwijderen, ongeacht jaar, zodat er na deze
+  // berekening altijd precies de nieuwe 12 rijen over zijn — nooit rijen van een vorige
+  // berekening die niet meer in het huidige venster vallen.
   const { error: deleteError } = await admin
     .from('nulmeting')
     .delete()
-    .eq('listing_id', input.listingId)
-    .neq('jaar', startJaar);
+    .eq('listing_id', input.listingId);
   if (deleteError) throw new Error(deleteError.message);
 
   const { error: upsertError } = await admin
@@ -345,7 +342,7 @@ export async function berekenNulmetingUitPricelabs(input: {
 
   revalidatePath(`/admin/klanten/${input.clientId}`);
 
-  return { jaar: startJaar, maanden };
+  return { startJaar, startMaand, maanden };
 }
 
 export async function wijzigKlant(input: {
