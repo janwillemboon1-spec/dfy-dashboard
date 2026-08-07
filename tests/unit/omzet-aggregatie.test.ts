@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { aggregeer, dagenInPeriode, groepeerPerMaand, groepeerPerListing, type CacheReservering } from '@/lib/dashboard/omzet-aggregatie';
+import { aggregeer, dagenInPeriode, groepeerPerListing, type CacheReservering } from '@/lib/dashboard/omzet-aggregatie';
 
 function reservering(overrides: Partial<CacheReservering> = {}): CacheReservering {
   return {
@@ -16,12 +16,14 @@ function reservering(overrides: Partial<CacheReservering> = {}): CacheReserverin
 }
 
 describe('aggregeer', () => {
-  it('telt omzet, nachten en kanalen op voor geboekte reserveringen', () => {
+  it('telt omzet, nachten en kanalen op voor geboekte reserveringen die volledig binnen de periode vallen', () => {
     const result = aggregeer(
       [
-        reservering({ rental_revenue: 200, no_of_days: 2, booking_channel: 'airbnb' }),
-        reservering({ rental_revenue: 150, no_of_days: 1, booking_channel: 'bcom' }),
+        reservering({ check_in: '2025-07-01', check_out: '2025-07-03', rental_revenue: 200, no_of_days: 2, booking_channel: 'airbnb' }),
+        reservering({ check_in: '2025-07-05', check_out: '2025-07-06', rental_revenue: 150, no_of_days: 1, booking_channel: 'bcom' }),
       ],
+      '2025-07-01',
+      '2025-08-01',
       10
     );
     expect(result.omzet).toBe(350);
@@ -36,7 +38,12 @@ describe('aggregeer', () => {
   });
 
   it('negeert geannuleerde reserveringen volledig', () => {
-    const result = aggregeer([reservering({ booking_status: 'cancelled', rental_revenue: 500 })], 10);
+    const result = aggregeer(
+      [reservering({ booking_status: 'cancelled', rental_revenue: 500, check_in: '2025-07-01', check_out: '2025-07-03' })],
+      '2025-07-01',
+      '2025-08-01',
+      10
+    );
     expect(result.omzet).toBe(0);
     expect(result.nachten).toBe(0);
     expect(result.kanalen).toEqual({});
@@ -44,7 +51,12 @@ describe('aggregeer', () => {
 
   it('groepeert alle airbnb-varianten onder één kanaalsleutel', () => {
     const result = aggregeer(
-      [reservering({ booking_channel: 'Airbnb' }), reservering({ booking_channel: 'airbnb_official' })],
+      [
+        reservering({ booking_channel: 'Airbnb', check_in: '2025-07-01', check_out: '2025-07-03' }),
+        reservering({ booking_channel: 'airbnb_official', check_in: '2025-07-05', check_out: '2025-07-07' }),
+      ],
+      '2025-07-01',
+      '2025-08-01',
       10
     );
     expect(Object.keys(result.kanalen)).toEqual(['airbnb']);
@@ -52,8 +64,69 @@ describe('aggregeer', () => {
   });
 
   it('geeft 0 terug voor adr/bezetting/revpar bij geen boekingen', () => {
-    const result = aggregeer([], 10);
+    const result = aggregeer([], '2025-07-01', '2025-08-01', 10);
     expect(result).toEqual({ omzet: 0, omzetIncl: 0, adr: 0, nachten: 0, bezetting: 0, revpar: 0, kanalen: {} });
+  });
+
+  it('telt een reservering die volledig vóór de periode ligt niet mee', () => {
+    const result = aggregeer(
+      [reservering({ check_in: '2025-06-01', check_out: '2025-06-05', rental_revenue: 400, no_of_days: 4 })],
+      '2025-07-01',
+      '2025-08-01',
+      10
+    );
+    expect(result.omzet).toBe(0);
+    expect(result.nachten).toBe(0);
+  });
+
+  it('prorateert een reservering die de linkergrens van de periode overschrijdt', () => {
+    // check_in 28 juni, check_out 3 juli: 5 nachten totaal, waarvan 2 (1 en 2 juli) in juli vallen.
+    const result = aggregeer(
+      [reservering({ check_in: '2025-06-28', check_out: '2025-07-03', rental_revenue: 500, total_cost: 550, no_of_days: 5, booking_channel: 'bcom' })],
+      '2025-07-01',
+      '2025-08-01',
+      31
+    );
+    expect(result.nachten).toBe(2);
+    expect(result.omzet).toBe(200); // 2/5 * 500
+    expect(result.omzetIncl).toBe(220); // 2/5 * 550
+    expect(result.kanalen.bcom.omzet).toBe(200);
+  });
+
+  it('prorateert een reservering die de rechtergrens van de periode overschrijdt (chalet 7-scenario)', () => {
+    // check_in 25 juli, check_out 4 augustus: 10 nachten totaal, waarvan 7 (25-31 juli) in juli vallen.
+    const result = aggregeer(
+      [reservering({ check_in: '2025-07-25', check_out: '2025-08-04', rental_revenue: 805.5, total_cost: null, no_of_days: 10, booking_channel: 'airbnb' })],
+      '2025-07-01',
+      '2025-08-01',
+      31
+    );
+    expect(result.nachten).toBe(7);
+    expect(result.omzet).toBeCloseTo(563.85, 5); // 7/10 * 805.50
+    expect(result.omzetIncl).toBe(0);
+  });
+
+  it('telt een reservering die de hele periode overspant volledig mee, geclipt aan de periodegrenzen', () => {
+    // check_in 15 juni, check_out 15 augustus: periode is precies juli (31 dagen).
+    const result = aggregeer(
+      [reservering({ check_in: '2025-06-15', check_out: '2025-08-15', rental_revenue: 6200, no_of_days: 61 })],
+      '2025-07-01',
+      '2025-08-01',
+      31
+    );
+    expect(result.nachten).toBe(31);
+    expect(result.omzet).toBeCloseTo((31 / 61) * 6200, 5);
+  });
+
+  it('telt geen nacht wanneer check_out exact op periodeStart valt', () => {
+    const result = aggregeer(
+      [reservering({ check_in: '2025-06-29', check_out: '2025-07-01', rental_revenue: 200, no_of_days: 2 })],
+      '2025-07-01',
+      '2025-08-01',
+      31
+    );
+    expect(result.nachten).toBe(0);
+    expect(result.omzet).toBe(0);
   });
 });
 
@@ -64,18 +137,6 @@ describe('dagenInPeriode', () => {
 
   it('geeft minstens 1 terug voor een periode van één dag', () => {
     expect(dagenInPeriode('2025-07-01', '2025-07-01')).toBe(1);
-  });
-});
-
-describe('groepeerPerMaand', () => {
-  it('groepeert reserveringen op de kalendermaand van check_in', () => {
-    const result = groepeerPerMaand([
-      reservering({ check_in: '2025-07-10' }),
-      reservering({ check_in: '2025-07-25' }),
-      reservering({ check_in: '2025-08-01' }),
-    ]);
-    expect(result['2025-07']).toHaveLength(2);
-    expect(result['2025-08']).toHaveLength(1);
   });
 });
 
