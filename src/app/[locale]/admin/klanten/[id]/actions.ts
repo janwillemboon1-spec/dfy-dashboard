@@ -6,7 +6,7 @@ import { assertIsAdmin } from '@/lib/auth/assert-admin';
 import { syncListing, volgendeMaand, dagenInMaand } from '@/lib/pricelabs/sync';
 import { syncListingReserveringen } from '@/lib/pricelabs/reserveringen-sync';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { aggregeer, groepeerPerMaand } from '@/lib/dashboard/omzet-aggregatie';
+import { aggregeer } from '@/lib/dashboard/omzet-aggregatie';
 import { bepaalNulmetingBronnen } from '@/lib/dashboard/nulmeting-uit-pricelabs';
 
 export async function corrigeerNulmeting(input: {
@@ -250,16 +250,17 @@ export async function berekenNulmetingUitPricelabs(input: {
     .from('pricelabs_reserveringen_cache')
     .select('listing_id, check_in, check_out, rental_revenue, total_cost, no_of_days, booking_status, booking_channel')
     .eq('listing_id', input.listingId)
-    .gte('check_in', `${startJaar - 1}-01-01`)
-    .lte('check_in', `${startJaar}-12-31`);
+    .lte('check_in', `${startJaar}-12-31`)
+    .gt('check_out', `${startJaar - 1}-01-01`);
   if (cacheError) throw new Error(cacheError.message);
 
-  const perMaand = groepeerPerMaand(cacheRijen ?? []);
-
   const maanden: NulmetingMaandResultaat[] = bronnen.map((bron) => {
-    const sleutel = `${bron.bronJaar}-${String(bron.bronMaand).padStart(2, '0')}`;
-    const rijen = perMaand[sleutel] ?? [];
-    const metrics = aggregeer(rijen, dagenInMaand(bron.bronJaar, bron.bronMaand));
+    const { jaar: volgJaar, maand: volgMaand } = volgendeMaand(bron.bronJaar, bron.bronMaand);
+    const maandStart = `${bron.bronJaar}-${String(bron.bronMaand).padStart(2, '0')}-01`;
+    const maandEind = `${volgJaar}-${String(volgMaand).padStart(2, '0')}-01`;
+    const rijen = (cacheRijen ?? []).filter((r) => r.check_in <= maandEind && r.check_out > maandStart);
+    const metrics = aggregeer(rijen, maandStart, maandEind, dagenInMaand(bron.bronJaar, bron.bronMaand));
+    const leeg = rijen.length === 0;
     return {
       maand: bron.maand,
       bron: bron.bron,
@@ -279,7 +280,7 @@ export async function berekenNulmetingUitPricelabs(input: {
         }
         return Math.min(100, afgerond);
       })(),
-      leeg: rijen.length === 0,
+      leeg,
     };
   });
 

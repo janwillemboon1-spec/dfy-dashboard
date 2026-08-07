@@ -300,4 +300,82 @@ describe('berekenNulmetingUitPricelabs', () => {
       await admin.from('pricelabs_listings_cache').delete().eq('pricelabs_listing_id', `pl-${suffix}`);
     }
   });
+
+  it('prorateert een reservering die twee bronmaanden overschrijdt', async () => {
+    // Regressietest voor de maandgrens-proratie-fix: een boeking die start in december
+    // (STLY-bron voor doelmaand 12, want > startmaand maart) en doorloopt tot in januari
+    // (echt-bron voor doelmaand 1) moet zijn nachten/omzet naar rato over beide bronmaanden
+    // verdelen i.p.v. volledig aan december (de incheckmaand) toegekend te worden.
+    const suffix = `${Date.now()}-maandgrens`;
+
+    const { data: client } = await admin
+      .from('clients')
+      .insert({ naam: 'Maandgrens Nulmeting Klant', email: `nulmeting-maandgrens-${suffix}@test.local` })
+      .select()
+      .single();
+    const maandgrensClientId = client!.id;
+
+    const { data: listing } = await admin
+      .from('listings')
+      .insert({ client_id: maandgrensClientId, naam: 'Maandgrens Listing', pricelabs_listing_id: `pl-${suffix}` })
+      .select()
+      .single();
+    const maandgrensListingId = listing!.id;
+
+    await admin
+      .from('pricelabs_listings_cache')
+      .insert({ pricelabs_listing_id: `pl-${suffix}`, naam: 'PL Listing', pms: 'hostaway' });
+
+    const { data: adminUserRes } = await admin.auth.admin.createUser({
+      email: `nulmeting-maandgrens-admin-${suffix}@test.local`,
+      email_confirm: true,
+      password: wachtwoord,
+    });
+    const maandgrensAdminUserId = adminUserRes!.user!.id;
+    await admin.from('profiles').insert({
+      id: maandgrensAdminUserId,
+      role: 'admin',
+      email: `nulmeting-maandgrens-admin-${suffix}@test.local`,
+      naam: 'Admin',
+    });
+
+    try {
+      activeCookieStore = await loginAlsCookieStore(`nulmeting-maandgrens-admin-${suffix}@test.local`, wachtwoord);
+
+      // 2025-12-25 t/m 2026-01-05: 11 nachten totaal, waarvan 7 in december 2025
+      // (25 t/m 31) en 4 in januari 2026 (1 t/m 4), à €100/nacht (rental_revenue 1100).
+      vi.mocked(fetchReservationData).mockResolvedValueOnce([
+        {
+          reservation_id: `nulmeting-maandgrens-${maandgrensListingId}`,
+          check_in: '2025-12-25',
+          check_out: '2026-01-05',
+          rental_revenue: '1100',
+          total_cost: null,
+          no_of_days: 11,
+          booking_status: 'booked',
+          booking_channel: null,
+        },
+      ]);
+
+      const resultaat = await berekenNulmetingUitPricelabs({
+        listingId: maandgrensListingId,
+        clientId: maandgrensClientId,
+        samenwerkingGestart: '2026-03-15',
+      });
+
+      const december = resultaat.maanden.find((m) => m.maand === 12)!;
+      expect(december.bron).toBe('stly'); // > startmaand maart, dus STLY-bron (2025-12)
+      expect(december.omzet).toBeCloseTo(700, 5); // 7/11 * 1100
+      expect(december.leeg).toBe(false);
+
+      const januari = resultaat.maanden.find((m) => m.maand === 1)!;
+      expect(januari.bron).toBe('echt'); // <= startmaand maart, dus echt-bron (2026-01)
+      expect(januari.omzet).toBeCloseTo(400, 5); // 4/11 * 1100
+      expect(januari.leeg).toBe(false);
+    } finally {
+      await admin.from('clients').delete().eq('id', maandgrensClientId);
+      await admin.auth.admin.deleteUser(maandgrensAdminUserId);
+      await admin.from('pricelabs_listings_cache').delete().eq('pricelabs_listing_id', `pl-${suffix}`);
+    }
+  });
 });
