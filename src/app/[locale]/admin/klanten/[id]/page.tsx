@@ -9,6 +9,7 @@ import { KlantBewerkenFormulier } from '@/components/admin/klant-bewerken-formul
 import { KlantVerwijderenDialoog } from '@/components/admin/klant-verwijderen-dialoog';
 import { ListingBewerkenFormulier } from '@/components/admin/listing-bewerken-formulier';
 import { ListingVerwijderenDialoog } from '@/components/admin/listing-verwijderen-dialoog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default async function KlantDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -48,7 +49,7 @@ export default async function KlantDetailPage({ params }: { params: Promise<{ id
       </div>
 
       {listings?.map((listing) => {
-        const nulmetingJaren = [...new Set((listing.nulmeting ?? []).map((r) => r.jaar))];
+        const heeftBestaandeNulmeting = (listing.nulmeting ?? []).length > 0;
         return (
           <section key={listing.id} className="space-y-4 border-t border-border pt-6">
             <div className="flex items-center justify-between gap-4">
@@ -64,39 +65,57 @@ export default async function KlantDetailPage({ params }: { params: Promise<{ id
                 <ListingVerwijderenDialoog listingId={listing.id} clientId={id} naam={listing.naam} />
               </div>
             </div>
-            <PricelabsKoppeling
-              listingId={listing.id}
-              clientId={id}
-              pricelabsListingId={listing.pricelabs_listing_id}
-              cache={pricelabsCache ?? []}
-            />
 
-            <SamenwerkingNulmetingForm
-              listingId={listing.id}
-              clientId={id}
-              pricelabsListingId={listing.pricelabs_listing_id}
-              samenwerkingGestart={listing.samenwerking_gestart}
-              nulmetingJaren={nulmetingJaren}
-            />
+            <Tabs defaultValue="nulmeting">
+              <TabsList>
+                <TabsTrigger value="koppeling">Koppeling</TabsTrigger>
+                <TabsTrigger value="nulmeting">Nulmeting</TabsTrigger>
+                <TabsTrigger value="resultaten">Resultaten</TabsTrigger>
+                <TabsTrigger value="actielog">Actielog</TabsTrigger>
+              </TabsList>
 
-            <NulmetingTabel listingId={listing.id} clientId={id} rijen={listing.nulmeting ?? []} />
-            <ResultatenTabel
-              nulmeting={listing.nulmeting ?? []}
-              actueel={listing.monthly_actuals ?? []}
-              pricelabsListingId={listing.pricelabs_listing_id}
-            />
-            <ActielogFormulier listingId={listing.id} clientId={id} />
+              <TabsContent value="koppeling">
+                <PricelabsKoppeling
+                  listingId={listing.id}
+                  clientId={id}
+                  pricelabsListingId={listing.pricelabs_listing_id}
+                  cache={pricelabsCache ?? []}
+                />
+              </TabsContent>
 
-            <ul className="space-y-1 text-sm">
-              {(listing.action_log ?? [])
-                .slice()
-                .sort((a, b) => (a.datum < b.datum ? 1 : -1))
-                .map((item) => (
-                  <li key={item.id} className="text-muted-foreground">
-                    {new Date(item.datum).toLocaleDateString('nl-NL')} — {item.omschrijving}
-                  </li>
-                ))}
-            </ul>
+              <TabsContent value="nulmeting" className="space-y-4">
+                <SamenwerkingNulmetingForm
+                  listingId={listing.id}
+                  clientId={id}
+                  pricelabsListingId={listing.pricelabs_listing_id}
+                  samenwerkingGestart={listing.samenwerking_gestart}
+                  heeftBestaandeNulmeting={heeftBestaandeNulmeting}
+                />
+                <NulmetingTabel listingId={listing.id} clientId={id} rijen={listing.nulmeting ?? []} />
+              </TabsContent>
+
+              <TabsContent value="resultaten">
+                <ResultatenTabel
+                  nulmeting={listing.nulmeting ?? []}
+                  actueel={listing.monthly_actuals ?? []}
+                  pricelabsListingId={listing.pricelabs_listing_id}
+                />
+              </TabsContent>
+
+              <TabsContent value="actielog" className="space-y-4">
+                <ActielogFormulier listingId={listing.id} clientId={id} />
+                <ul className="space-y-1 text-sm">
+                  {(listing.action_log ?? [])
+                    .slice()
+                    .sort((a, b) => (a.datum < b.datum ? 1 : -1))
+                    .map((item) => (
+                      <li key={item.id} className="text-muted-foreground">
+                        {new Date(item.datum).toLocaleDateString('nl-NL')} — {item.omschrijving}
+                      </li>
+                    ))}
+                </ul>
+              </TabsContent>
+            </Tabs>
           </section>
         );
       })}
