@@ -20,6 +20,7 @@ vi.mock('next/headers', () => ({
 }));
 
 const { berekenNulmetingUitPricelabs } = await import('@/app/[locale]/admin/klanten/[id]/actions');
+const { fetchReservationData } = await import('@/lib/pricelabs/client');
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -85,31 +86,6 @@ beforeAll(async () => {
     .from('nulmeting')
     .insert({ listing_id: listingId, jaar: 2026, maand: 1, omzet: 999, bezetting: 99 });
 
-  // Cache-data die de berekening moet gebruiken:
-  // - januari 2026 (echt, want startmaand = maart): 1 reservering, omzet 500.
-  // - mei 2025 (STLY-bron voor mei 2026, want mei > startmaand maart): 1 reservering, omzet 800.
-  // - maart 2026 blijft bewust leeg, om de 'leeg: true'-markering te testen.
-  await admin.from('pricelabs_reserveringen_cache').insert([
-    {
-      listing_id: listingId,
-      reservation_id: `nulmeting-echt-${suffix}`,
-      check_in: '2026-01-10',
-      check_out: '2026-01-12',
-      rental_revenue: 500,
-      no_of_days: 2,
-      booking_status: 'booked',
-    },
-    {
-      listing_id: listingId,
-      reservation_id: `nulmeting-stly-${suffix}`,
-      check_in: '2025-05-10',
-      check_out: '2025-05-12',
-      rental_revenue: 800,
-      no_of_days: 2,
-      booking_status: 'booked',
-    },
-  ]);
-
   adminEmail = `nulmeting-pricelabs-admin-${suffix}@test.local`;
   const { data: adminUserRes } = await admin.auth.admin.createUser({
     email: adminEmail,
@@ -159,6 +135,38 @@ describe('berekenNulmetingUitPricelabs', () => {
 
   it('berekent en overschrijft de nulmeting op basis van echt/STLY per maand', async () => {
     activeCookieStore = await loginAlsCookieStore(adminEmail, wachtwoord);
+
+    // Cache-data die de berekening moet gebruiken, aangeleverd via de (gemockte)
+    // PriceLabs-fetch i.p.v. rechtstreeks in de cache voor-geïnsert: berekenNulmetingUitPricelabs
+    // synct eerst (syncListingReserveringen), en die sync ruimt sinds de reconcile-fix
+    // alles binnen het opgevraagde venster op vóórdat de verse fetch wordt weggeschreven —
+    // rechtstreeks voor-geïnsette rijen zouden dus alweer verdwenen zijn vóórdat de
+    // nulmeting-berekening ze zou kunnen gebruiken.
+    // - januari 2026 (echt, want startmaand = maart): 1 reservering, omzet 500.
+    // - mei 2025 (STLY-bron voor mei 2026, want mei > startmaand maart): 1 reservering, omzet 800.
+    // - maart 2026 blijft bewust leeg, om de 'leeg: true'-markering te testen.
+    vi.mocked(fetchReservationData).mockResolvedValueOnce([
+      {
+        reservation_id: `nulmeting-echt-${listingId}`,
+        check_in: '2026-01-10',
+        check_out: '2026-01-12',
+        rental_revenue: '500',
+        total_cost: null,
+        no_of_days: 2,
+        booking_status: 'booked',
+        booking_channel: null,
+      },
+      {
+        reservation_id: `nulmeting-stly-${listingId}`,
+        check_in: '2025-05-10',
+        check_out: '2025-05-12',
+        rental_revenue: '800',
+        total_cost: null,
+        no_of_days: 2,
+        booking_status: 'booked',
+        booking_channel: null,
+      },
+    ]);
 
     const resultaat = await berekenNulmetingUitPricelabs({
       listingId,

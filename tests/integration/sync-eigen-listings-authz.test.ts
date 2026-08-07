@@ -265,4 +265,100 @@ describe('syncEigenListings', () => {
       await admin.from('pricelabs_listings_cache').delete().eq('pricelabs_listing_id', `pl-sync-authz-${suffix}`);
     }
   });
+
+  it('ruimt oude cache-rijen op die niet meer in de verse PriceLabs-data voorkomen', async () => {
+    // Regressietest voor een productiebug: een klant meldde een dubbele omzettelling.
+    // Onderzoek wees uit dat de listing tussentijds (per ongeluk, tijdens een
+    // ontkoppel/herkoppel-cyclus) aan een ándere PriceLabs-woning gekoppeld is geweest.
+    // Omdat de sync tot nu toe een pure upsert was (nooit iets verwijderde), bleven de
+    // reserveringen van die andere, oude koppeling voor altijd naast de nieuwe staan en
+    // telden ze dubbel mee. Deze test simuleert precies dat scenario: een cache-rij die
+    // al bestaat vóór de sync draait, maar niet meer voorkomt in de verse fetch — die
+    // rij moet na de sync weg zijn, niet blijven hangen.
+    const suffix = `${Date.now()}-opruimen`;
+
+    const { data: clientD } = await admin
+      .from('clients')
+      .insert({ naam: 'Sync Authz Klant D', email: `sync-authz-klant-d-${suffix}@test.local` })
+      .select()
+      .single();
+    const clientDId = clientD!.id;
+
+    const { data: klantDListing } = await admin
+      .from('listings')
+      .insert({ client_id: clientDId, naam: 'Gekoppelde Listing D', pricelabs_listing_id: `pl-sync-authz-${suffix}` })
+      .select()
+      .single();
+    const klantDListingId = klantDListing!.id;
+
+    await admin
+      .from('pricelabs_listings_cache')
+      .insert({ pricelabs_listing_id: `pl-sync-authz-${suffix}`, naam: 'PL Listing D', pms: 'hostaway' });
+
+    // Simuleert een achtergebleven reservering van een vorige (foute) koppeling: een
+    // rij die al in de cache staat vóórdat syncEigenListings draait, met een
+    // check_in die ruim binnen het opgevraagde venster valt (dus geen kwestie van
+    // "buiten bereik", maar écht stale data).
+    const vandaag = new Date().toISOString().slice(0, 10);
+    await admin.from('pricelabs_reserveringen_cache').insert({
+      listing_id: klantDListingId,
+      reservation_id: `sync-authz-oude-koppeling-${suffix}`,
+      check_in: vandaag,
+      check_out: new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10),
+      rental_revenue: 999,
+      no_of_days: 2,
+      booking_status: 'booked',
+    });
+
+    const klantDEmail = `sync-authz-klant-d-${suffix}@test.local`;
+    const { data: userD } = await admin.auth.admin.createUser({
+      email: klantDEmail,
+      email_confirm: true,
+      password: wachtwoord,
+    });
+    const klantDUserId = userD!.user!.id;
+    await admin
+      .from('profiles')
+      .insert({ id: klantDUserId, role: 'klant', client_id: clientDId, email: klantDEmail, naam: 'Klant D' });
+
+    try {
+      // De verse fetch geeft een heel andere reservering terug — geen spoor meer van
+      // de oude "sync-authz-oude-koppeling"-reservering.
+      vi.mocked(fetchReservationData).mockResolvedValueOnce([
+        {
+          reservation_id: `sync-authz-nieuwe-koppeling-${suffix}`,
+          check_in: new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 10),
+          check_out: new Date(Date.now() + 12 * 86_400_000).toISOString().slice(0, 10),
+          rental_revenue: '500',
+          total_cost: null,
+          no_of_days: 2,
+          booking_status: 'booked',
+          booking_channel: null,
+        },
+      ]);
+
+      activeCookieStore = await loginAlsCookieStore(klantDEmail, wachtwoord);
+
+      await syncEigenListings();
+
+      const { data: oudeRij } = await admin
+        .from('pricelabs_reserveringen_cache')
+        .select('*')
+        .eq('reservation_id', `sync-authz-oude-koppeling-${suffix}`)
+        .maybeSingle();
+      expect(oudeRij).toBeNull();
+
+      const { data: nieuweRij } = await admin
+        .from('pricelabs_reserveringen_cache')
+        .select('*')
+        .eq('reservation_id', `sync-authz-nieuwe-koppeling-${suffix}`)
+        .maybeSingle();
+      expect(nieuweRij).not.toBeNull();
+      expect(nieuweRij!.listing_id).toBe(klantDListingId);
+    } finally {
+      await admin.from('clients').delete().eq('id', clientDId);
+      await admin.auth.admin.deleteUser(klantDUserId);
+      await admin.from('pricelabs_listings_cache').delete().eq('pricelabs_listing_id', `pl-sync-authz-${suffix}`);
+    }
+  });
 });

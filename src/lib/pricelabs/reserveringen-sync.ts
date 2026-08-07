@@ -108,6 +108,24 @@ export async function syncListingReserveringen(params: {
       })
       .filter((rij): rij is NonNullable<typeof rij> => rij !== null);
 
+    // Vóór het wegschrijven van de verse data: alles wat al in de cache staat voor déze
+    // listing binnen het opgevraagde datumbereik eerst verwijderen. Dit maakt de sync
+    // "reconciling" i.p.v. alleen-toevoegend — zonder dit zouden reserveringen van een
+    // eerdere (bv. per ongeluk andere) PriceLabs-koppeling voor altijd in de cache
+    // blijven staan naast de nieuwe, en dubbel meetellen bij het optellen in
+    // omzet-aggregatie.ts. Veilig: reserveringen hierboven is al een verse, volledige
+    // fetch van exact hetzelfde bereik [vanaf, tweeJaarVooruit], dus er gaat geen
+    // legitieme data verloren — alleen data die niet meer (of nooit) bij déze koppeling
+    // hoorde. Vóór de upsert-loop, na een geslaagde fetch: als fetchReservationData
+    // hierboven al gefaald had, was deze functie al in de catch-tak beland en wordt hier
+    // dus nooit bestaande (mogelijk correcte) data verwijderd zonder vervanging.
+    const { error: deleteError } = await admin
+      .from('pricelabs_reserveringen_cache')
+      .delete()
+      .eq('listing_id', listing.id)
+      .gte('check_in', vanaf.toISOString().slice(0, 10));
+    if (deleteError) throw new Error(deleteError.message);
+
     for (let i = 0; i < rijen.length; i += 500) {
       const { error } = await admin
         .from('pricelabs_reserveringen_cache')
