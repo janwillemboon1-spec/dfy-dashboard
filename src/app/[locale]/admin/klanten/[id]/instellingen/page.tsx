@@ -102,7 +102,6 @@ export default async function KlantDetailPage({ params }: { params: Promise<{ id
 
               <TabsContent value="resultaten">
                 <ResultatenTabel
-                  nulmeting={listing.nulmeting ?? []}
                   actueel={listing.monthly_actuals ?? []}
                   pricelabsListingId={listing.pricelabs_listing_id}
                 />
