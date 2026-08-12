@@ -24,6 +24,7 @@ export default async function KlantPortaalLayout({
       <PortaalSidebar
         titel={klant.naam}
         subtitel="Klantportaal"
+        terug={{ label: 'Terug naar klantoverzicht', href: '/admin/klanten' }}
         items={[
           { label: 'Voortgang', href: `/admin/klanten/${id}/voortgang` },
           { label: 'Cijfers', href: `/admin/klanten/${id}/cijfers` },

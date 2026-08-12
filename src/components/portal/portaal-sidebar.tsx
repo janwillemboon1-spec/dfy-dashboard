@@ -13,16 +13,26 @@ export function PortaalSidebar({
   titel,
   subtitel,
   items,
+  terug,
 }: {
   titel: string;
   subtitel?: string;
   items: PortaalMenuItem[];
+  terug?: { label: string; href: string };
 }) {
   const pathname = usePathname();
 
   return (
     <nav className="w-56 shrink-0 border-r border-border p-4 space-y-6">
       <div>
+        {terug && (
+          <Link
+            href={terug.href}
+            className="mb-2 inline-block text-xs text-muted-foreground hover:underline"
+          >
+            ← {terug.label}
+          </Link>
+        )}
         <p className="font-serif text-lg">{titel}</p>
         {subtitel && <p className="text-xs text-muted-foreground">{subtitel}</p>}
       </div>
