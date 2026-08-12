@@ -99,7 +99,12 @@ function LoginForm() {
       </form>
 
       <div className="mt-3 text-sm">
-        <button type="button" onClick={handleResetPassword} className="underline text-muted-foreground">
+        <button
+          type="button"
+          onClick={handleResetPassword}
+          disabled={resetStatus === 'bezig'}
+          className="underline text-muted-foreground disabled:opacity-50"
+        >
           Wachtwoord vergeten of nog geen wachtwoord ingesteld? Stel er een in
         </button>
         {resetStatus === 'bezig' && <p className="mt-2 text-muted-foreground">Bezig...</p>}
