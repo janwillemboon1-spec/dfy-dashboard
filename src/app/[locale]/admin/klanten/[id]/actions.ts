@@ -56,7 +56,7 @@ export async function corrigeerNulmeting(input: {
 
   if (logError) throw new Error(logError.message);
 
-  revalidatePath(`/admin/klanten/${input.clientId}`);
+  revalidatePath(`/admin/klanten/${input.clientId}/instellingen`);
 }
 
 export async function voegActielogToe(input: {
@@ -78,7 +78,7 @@ export async function voegActielogToe(input: {
   });
 
   if (error) throw new Error(error.message);
-  revalidatePath(`/admin/klanten/${input.clientId}`);
+  revalidatePath(`/admin/klanten/${input.clientId}/instellingen`);
 }
 
 export async function koppelListing(input: {
@@ -128,7 +128,7 @@ export async function koppelListing(input: {
     tot: huidigeMaand,
   });
 
-  revalidatePath(`/admin/klanten/${input.clientId}`);
+  revalidatePath(`/admin/klanten/${input.clientId}/instellingen`);
 }
 
 export async function ontkoppelListing(input: { listingId: string; clientId: string }) {
@@ -141,7 +141,7 @@ export async function ontkoppelListing(input: { listingId: string; clientId: str
     .eq('id', input.listingId);
 
   if (error) throw new Error(error.message);
-  revalidatePath(`/admin/klanten/${input.clientId}`);
+  revalidatePath(`/admin/klanten/${input.clientId}/instellingen`);
 }
 
 export async function syncListingNow(input: { listingId: string; clientId: string }) {
@@ -190,7 +190,7 @@ export async function syncListingNow(input: { listingId: string; clientId: strin
     tot: huidigeMaand,
   });
 
-  revalidatePath(`/admin/klanten/${input.clientId}`);
+  revalidatePath(`/admin/klanten/${input.clientId}/instellingen`);
 }
 
 const ISO_DATUM = /^\d{4}-\d{2}-\d{2}$/;
@@ -340,7 +340,7 @@ export async function berekenNulmetingUitPricelabs(input: {
   });
   if (logError) throw new Error(logError.message);
 
-  revalidatePath(`/admin/klanten/${input.clientId}`);
+  revalidatePath(`/admin/klanten/${input.clientId}/instellingen`);
 
   return { startJaar, startMaand, maanden };
 }
@@ -437,7 +437,7 @@ export async function wijzigKlant(input: {
     if (profielUpdateError) throw new Error(profielUpdateError.message);
   }
 
-  revalidatePath(`/admin/klanten/${input.clientId}`);
+  revalidatePath(`/admin/klanten/${input.clientId}/instellingen`);
 }
 
 export async function verwijderKlant(input: { clientId: string }) {
@@ -493,7 +493,7 @@ export async function wijzigListing(input: {
     .eq('id', input.listingId);
   if (error) throw new Error(error.message);
 
-  revalidatePath(`/admin/klanten/${input.clientId}`);
+  revalidatePath(`/admin/klanten/${input.clientId}/instellingen`);
 }
 
 export async function verwijderListing(input: { listingId: string; clientId: string }) {
@@ -503,5 +503,5 @@ export async function verwijderListing(input: { listingId: string; clientId: str
   const { error } = await supabase.from('listings').delete().eq('id', input.listingId);
   if (error) throw new Error(error.message);
 
-  revalidatePath(`/admin/klanten/${input.clientId}`);
+  revalidatePath(`/admin/klanten/${input.clientId}/instellingen`);
 }

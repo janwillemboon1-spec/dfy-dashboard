@@ -43,7 +43,7 @@ export default async function KlantenPage() {
             {klanten?.map((klant) => (
               <tr key={klant.id} className="border-b border-border/50">
                 <td className="py-2">
-                  <Link href={`/admin/klanten/${klant.id}`} className="hover:underline">{klant.naam}</Link>
+                  <Link href={`/admin/klanten/${klant.id}/instellingen`} className="hover:underline">{klant.naam}</Link>
                 </td>
                 <td>{klant.email}</td>
                 <td>{klant.status}</td>
