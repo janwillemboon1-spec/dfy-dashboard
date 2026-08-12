@@ -382,6 +382,48 @@ export type Database = {
           },
         ]
       }
+      voortgang_activiteitenlog: {
+        Row: {
+          aangemaakt_op: string
+          client_id: string
+          datum: string
+          id: string
+          omschrijving: string
+          toegevoegd_door: string | null
+        }
+        Insert: {
+          aangemaakt_op?: string
+          client_id: string
+          datum: string
+          id?: string
+          omschrijving: string
+          toegevoegd_door?: string | null
+        }
+        Update: {
+          aangemaakt_op?: string
+          client_id?: string
+          datum?: string
+          id?: string
+          omschrijving?: string
+          toegevoegd_door?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voortgang_activiteitenlog_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voortgang_activiteitenlog_toegevoegd_door_fkey"
+            columns: ["toegevoegd_door"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       voortgang_checklist_items: {
         Row: {
           aangemaakt_op: string
