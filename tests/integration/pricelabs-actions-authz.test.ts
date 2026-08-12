@@ -7,7 +7,13 @@ import { createBrowserClient } from '@supabase/ssr';
 // niet-admin de action buiten de /admin-middleware om aanroept.
 vi.mock('@/lib/pricelabs/client', async () => {
   const actual = await vi.importActual<typeof import('@/lib/pricelabs/client')>('@/lib/pricelabs/client');
-  return { ...actual, fetchReservationData: vi.fn().mockResolvedValue([]) };
+  return {
+    ...actual,
+    fetchReservationData: vi.fn().mockResolvedValue([]),
+    fetchAllListings: vi.fn().mockResolvedValue([
+      { id: 'pl-cache-test', name: 'Ververste Testlisting', pms: 'hostaway' },
+    ]),
+  };
 });
 
 // revalidatePath vereist een echte Next.js request-scope (workAsyncStorage) — die
@@ -30,7 +36,7 @@ vi.mock('next/headers', () => ({
   }),
 }));
 
-const { koppelListing, ontkoppelListing, syncListingNow } = await import(
+const { koppelListing, ontkoppelListing, syncListingNow, ververPricelabsListingsCache } = await import(
   '@/app/[locale]/admin/klanten/[id]/actions'
 );
 
@@ -109,6 +115,7 @@ afterAll(async () => {
   await admin.from('clients').delete().eq('id', doelClientId);
   await admin.auth.admin.deleteUser(klantUserId);
   await admin.auth.admin.deleteUser(adminUserId);
+  await admin.from('pricelabs_listings_cache').delete().eq('pricelabs_listing_id', 'pl-cache-test');
 });
 
 describe('pricelabs-koppeling server actions: expliciete admin-check', () => {
@@ -167,5 +174,32 @@ describe('pricelabs-koppeling server actions: expliciete admin-check', () => {
 
     const { data: listing } = await admin.from('listings').select('pricelabs_listing_id').eq('id', doelListingId).single();
     expect(listing!.pricelabs_listing_id).toBe('pl-x');
+  });
+
+  it('ververPricelabsListingsCache weigert een niet-admin', async () => {
+    activeCookieStore = await loginAlsCookieStore(klantEmail, wachtwoord);
+    await expect(ververPricelabsListingsCache(doelClientId)).rejects.toThrow('Niet geautoriseerd.');
+  });
+
+  it('ververPricelabsListingsCache ververst de cache handmatig als admin, zonder op de cron te wachten', async () => {
+    activeCookieStore = await loginAlsCookieStore(adminEmail, wachtwoord);
+
+    await admin.from('pricelabs_listings_cache').delete().eq('pricelabs_listing_id', 'pl-cache-test');
+    const { data: voor } = await admin
+      .from('pricelabs_listings_cache')
+      .select('*')
+      .eq('pricelabs_listing_id', 'pl-cache-test')
+      .maybeSingle();
+    expect(voor).toBeNull();
+
+    await ververPricelabsListingsCache(doelClientId);
+
+    const { data: na } = await admin
+      .from('pricelabs_listings_cache')
+      .select('*')
+      .eq('pricelabs_listing_id', 'pl-cache-test')
+      .single();
+    expect(na!.naam).toBe('Ververste Testlisting');
+    expect(na!.pms).toBe('hostaway');
   });
 });

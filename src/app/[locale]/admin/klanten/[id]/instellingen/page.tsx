@@ -4,6 +4,7 @@ import { NulmetingTabel } from '@/components/admin/nulmeting-tabel';
 import { ResultatenTabel } from '@/components/admin/resultaten-tabel';
 import { ActielogFormulier } from '@/components/admin/actielog-formulier';
 import { PricelabsKoppeling } from '@/components/admin/pricelabs-koppeling';
+import { PricelabsCacheVerversen } from '@/components/admin/pricelabs-cache-verversen';
 import { SamenwerkingNulmetingForm } from '@/components/admin/samenwerking-nulmeting-form';
 import { KlantBewerkenFormulier } from '@/components/admin/klant-bewerken-formulier';
 import { KlantVerwijderenDialoog } from '@/components/admin/klant-verwijderen-dialoog';
@@ -46,6 +47,11 @@ export default async function KlantDetailPage({ params }: { params: Promise<{ id
           />
           <KlantVerwijderenDialoog clientId={id} naam={klant.naam} />
         </div>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-medium text-muted-foreground">Accommodaties</h2>
+        <PricelabsCacheVerversen clientId={id} />
       </div>
 
       {listings?.map((listing) => {

@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server';
 import { assertIsAdmin } from '@/lib/auth/assert-admin';
 import { syncListing, volgendeMaand, dagenInMaand } from '@/lib/pricelabs/sync';
 import { syncListingReserveringen } from '@/lib/pricelabs/reserveringen-sync';
+import { verversPricelabsCache } from '@/lib/pricelabs/ververs-cache';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { aggregeer } from '@/lib/dashboard/omzet-aggregatie';
 import { bepaalNulmetingBronnen } from '@/lib/dashboard/nulmeting-uit-pricelabs';
@@ -739,4 +740,17 @@ export async function voegActiviteitToe(input: {
   if (error) throw new Error(error.message);
 
   revalidatePath(`/admin/klanten/${input.clientId}/voortgang`);
+}
+
+// Handmatige tegenhanger van het cron-scriptje (scripts/sync-pricelabs-cron.ts) dat
+// pricelabs_listings_cache normaal op een vast schema ververst — zodat een net in
+// PriceLabs aangemaakte accommodatie meteen koppelbaar is, zonder op de volgende
+// cron-run te hoeven wachten.
+export async function ververPricelabsListingsCache(clientId: string) {
+  await assertIsAdmin();
+  const supabase = await createClient();
+
+  await verversPricelabsCache(supabase);
+
+  revalidatePath(`/admin/klanten/${clientId}/instellingen`);
 }
