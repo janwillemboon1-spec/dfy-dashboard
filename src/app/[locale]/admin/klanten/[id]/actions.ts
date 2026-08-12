@@ -124,15 +124,26 @@ export async function koppelListing(input: {
   const huidigeMaand = { jaar: nu.getUTCFullYear(), maand: nu.getUTCMonth() + 1 };
   const vanaf = laatsteNulmeting ? volgendeMaand(laatsteNulmeting.jaar, laatsteNulmeting.maand) : huidigeMaand;
 
-  await syncListing(supabase, {
-    listingId: input.listingId,
-    pricelabsListingId: input.pricelabsListingId,
-    pms: input.pms,
-    vanaf,
-    tot: huidigeMaand,
-  });
-
   revalidatePath(`/admin/klanten/${input.clientId}/instellingen`);
+
+  // De koppeling zelf (de update hierboven) staat al vast op dit punt, ongeacht of de
+  // synchronisatie hieronder lukt — bv. PriceLabs kan reserveringsdata nog even
+  // weigeren vlak na een verse PMS-koppeling. Zonder deze try/catch zou de admin een
+  // generieke, technische foutmelding zien die niet duidelijk maakt dat de koppeling
+  // wél is gelukt — zelfde patroon als de mislukte notificatie in voegTodoToe.
+  try {
+    await syncListing(supabase, {
+      listingId: input.listingId,
+      pricelabsListingId: input.pricelabsListingId,
+      pms: input.pms,
+      vanaf,
+      tot: huidigeMaand,
+    });
+  } catch (syncError) {
+    throw new Error(
+      `Accommodatie gekoppeld, maar de eerste synchronisatie van reserveringen is mislukt: ${(syncError as Error).message}. Probeer het later opnieuw via 'Sync nu'.`
+    );
+  }
 }
 
 export async function ontkoppelListing(input: { listingId: string; clientId: string }) {

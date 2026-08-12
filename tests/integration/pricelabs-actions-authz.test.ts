@@ -39,6 +39,7 @@ vi.mock('next/headers', () => ({
 const { koppelListing, ontkoppelListing, syncListingNow, ververPricelabsListingsCache } = await import(
   '@/app/[locale]/admin/klanten/[id]/actions'
 );
+const { fetchReservationData } = await import('@/lib/pricelabs/client');
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -137,6 +138,39 @@ describe('pricelabs-koppeling server actions: expliciete admin-check', () => {
 
     const { data: listing } = await admin.from('listings').select('pricelabs_listing_id').eq('id', doelListingId).single();
     expect(listing!.pricelabs_listing_id).toBe('pl-x');
+  });
+
+  it('koppelListing blijft gekoppeld en geeft een duidelijke gecombineerde foutmelding als de eerste synchronisatie mislukt', async () => {
+    const { data: listingVoorSyncFout } = await admin
+      .from('listings')
+      .insert({ client_id: doelClientId, naam: 'Listing met synchronisatiefout' })
+      .select()
+      .single();
+
+    vi.mocked(fetchReservationData).mockRejectedValueOnce(
+      new Error("PriceLabs /reservation_data gaf status 400 terug voor listing pl-sync-fout")
+    );
+
+    activeCookieStore = await loginAlsCookieStore(adminEmail, wachtwoord);
+
+    await expect(
+      koppelListing({
+        listingId: listingVoorSyncFout!.id,
+        clientId: doelClientId,
+        pricelabsListingId: 'pl-sync-fout',
+        pms: 'hostaway',
+      })
+    ).rejects.toThrow(
+      "Accommodatie gekoppeld, maar de eerste synchronisatie van reserveringen is mislukt: PriceLabs /reservation_data gaf status 400 terug voor listing pl-sync-fout. Probeer het later opnieuw via 'Sync nu'."
+    );
+
+    // De koppeling zelf moet standhouden ondanks de mislukte synchronisatie erna.
+    const { data: listingNa } = await admin
+      .from('listings')
+      .select('pricelabs_listing_id')
+      .eq('id', listingVoorSyncFout!.id)
+      .single();
+    expect(listingNa!.pricelabs_listing_id).toBe('pl-sync-fout');
   });
 
   it('koppelListing werkt ook als er nog geen nulmeting bestaat voor deze accommodatie', async () => {
