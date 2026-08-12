@@ -94,6 +94,16 @@ describe('RLS: klant-isolatie', () => {
     expect(data).toEqual([]);
   });
 
+  it('klant B kan de gegevens van client A niet wijzigen', async () => {
+    const klantClient = createClient(url, anonKey);
+    await klantClient.auth.signInWithPassword({ email: klantBEmail, password: klantBWachtwoord });
+
+    await klantClient.from('clients').update({ naam: 'Gehackt' }).eq('id', clientAId);
+
+    const { data } = await admin.from('clients').select('naam').eq('id', clientAId).single();
+    expect(data!.naam).toBe('Klant A');
+  });
+
   it('klant B leest alleen de pricelabs_listings_cache-rij van de eigen koppeling, niet de rest van de cache', async () => {
     const klantClient = createClient(url, anonKey);
     await klantClient.auth.signInWithPassword({ email: klantBEmail, password: klantBWachtwoord });

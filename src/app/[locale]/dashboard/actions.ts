@@ -49,3 +49,26 @@ export async function syncEigenListings(): Promise<{ succes: boolean; fout?: str
   // bekijken; het is legitiem dat alle rijen daarin succes: false hebben.
   return { succes: true, resultaten };
 }
+
+export async function wijzigEigenClientGegevens(input: {
+  naam: string;
+  telefoon: string | null;
+}): Promise<{ succes: boolean; fout?: string }> {
+  if (!input.naam.trim()) return { succes: false, fout: 'Naam is verplicht.' };
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { succes: false, fout: 'Niet ingelogd.' };
+
+  const { data: profile } = await supabase.from('profiles').select('client_id').eq('id', user.id).maybeSingle();
+  if (!profile?.client_id) return { succes: false, fout: 'Geen account gevonden.' };
+
+  const { error } = await supabase
+    .from('clients')
+    .update({ naam: input.naam.trim(), telefoon: input.telefoon })
+    .eq('id', profile.client_id);
+  if (error) return { succes: false, fout: error.message };
+
+  revalidatePath('/dashboard/instellingen');
+  return { succes: true };
+}
