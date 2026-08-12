@@ -505,3 +505,25 @@ export async function verwijderListing(input: { listingId: string; clientId: str
 
   revalidatePath(`/admin/klanten/${input.clientId}/instellingen`);
 }
+
+export async function werkFaseVoortgangBij(input: {
+  clientId: string;
+  faseNummer: 1 | 2 | 3;
+  percentage: number;
+}) {
+  await assertIsAdmin();
+  if (!Number.isInteger(input.percentage) || input.percentage < 0 || input.percentage > 100) {
+    throw new Error('Percentage moet een geheel getal tussen 0 en 100 zijn.');
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('voortgang_fasen')
+    .upsert(
+      { client_id: input.clientId, fase_nummer: input.faseNummer, percentage: input.percentage },
+      { onConflict: 'client_id,fase_nummer' }
+    );
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/admin/klanten/${input.clientId}/voortgang`);
+}
