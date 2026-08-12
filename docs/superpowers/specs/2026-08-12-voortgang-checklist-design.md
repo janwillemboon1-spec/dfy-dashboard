@@ -43,28 +43,29 @@ Geen `unique`-constraint nodig — meerdere items met dezelfde naam binnen één
 ### 1a. Standaard-checklist — automatisch voor elke klant
 
 De klant wil niet elke keer handmatig dezelfde items hoeven toevoegen. Daarom bevat dezelfde
-migratie ook een vaste standaardlijst van 18 items, ingedeeld op inhoud (de klant gaf de
-volledige lijst aan, de indeling per fase is hierbij bepaald):
+migratie ook een vaste standaardlijst van 20 items, ingedeeld op inhoud (de klant gaf de
+volledige lijst aan, inclusief een correctie op de eerste fase-indeling):
 
-**Fase 1 — Onboarding** (9): Advertentietitel geanalyseerd; Omschrijving herschreven; Foto's
-beoordeeld en aanbevelingen gegeven; Voorzieningenlijst gecontroleerd; Huisregels gecheckt;
-Alles gereviewed; Klant geïnformeerd; Live gegaan; Geautomatiseerd bericht instellen over
+**Fase 1 — Onboarding** (5): Koppeling met dynamic pricing software tot stand gebracht;
+Dashboard geactiveerd; Klant geïnformeerd; Live gegaan; Geautomatiseerd bericht instellen over
 voorbereiding bedden.
 
 **Fase 2 — Marktanalyse & concurrentieanalyse** (4): Concurrentie analyse; Reviews
 geanalyseerd; Antwoordstrategie bepaald; Host profiel beoordeeld.
 
-**Fase 3 — Optimalisaties APH** (5): Basisprijs ingesteld; Weekendtoeslag geconfigureerd;
+**Fase 3 — Optimalisaties APH** (11): Advertentietitel geanalyseerd; Omschrijving herschreven;
+Foto's beoordeeld en aanbevelingen gegeven; Voorzieningenlijst gecontroleerd; Huisregels
+gecheckt; Alles gereviewed; Basisprijs ingesteld; Weekendtoeslag geconfigureerd;
 Seizoensprijzen ingesteld; Minimum nachten bepaald; Last-minute korting ingesteld.
 
 Deze standaardlijst wordt op twee manieren toegepast, beide in dezelfde migratie:
 
-1. **Backfill voor bestaande klanten**: een eenmalige `insert ... select` die de 18 items voor
+1. **Backfill voor bestaande klanten**: een eenmalige `insert ... select` die de 20 items voor
    elke rij die al in `clients` staat aanmaakt (cross join tussen `clients` en een
-   `values`-lijst met de 18 (fase_nummer, naam)-paren).
+   `values`-lijst met de 20 (fase_nummer, naam)-paren).
 2. **Trigger voor nieuwe klanten**: een `after insert on clients`-trigger
-   (`seed_standaard_checklist_items`, `security definer`, dezelfde 18-item-lijst) die
-   automatisch dezelfde 18 items aanmaakt zodra een nieuwe klant wordt aangemaakt — ongeacht
+   (`seed_standaard_checklist_items`, `security definer`, dezelfde 20-item-lijst) die
+   automatisch dezelfde 20 items aanmaakt zodra een nieuwe klant wordt aangemaakt — ongeacht
    via welke weg (het "nieuwe klant"-formulier, de CSV-import, enz.), omdat de trigger op
    tabelniveau zit i.p.v. in één specifieke server-actie.
 
@@ -137,8 +138,8 @@ aan.
 ## Testen
 
 - Handmatige verificatie van de backfill/trigger: na de migratie heeft een bestaande klant
-  meteen 18 items verdeeld over de 3 fasen (9/4/5); een nieuw aangemaakte klant (via het
-  "nieuwe klant"-formulier) krijgt dezelfde 18 items automatisch mee.
+  meteen 20 items verdeeld over de 3 fasen (5/4/11); een nieuw aangemaakte klant (via het
+  "nieuwe klant"-formulier) krijgt dezelfde 20 items automatisch mee.
 - Integratietest voor beide server-acties: weigert niet-admin, weigert een lege naam bij
   toevoegen, en — het belangrijkste — controleert dat het fase-percentage na toevoegen/afvinken
   correct herberekend wordt (bv. 2 items, 1 afgevinkt → 50%; een 3e nieuw item toevoegen →
