@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -58,9 +59,9 @@ export default function ResetWachtwoordPage() {
         <h1 className="font-serif text-2xl">Link verlopen</h1>
         <p className="mt-2 text-muted-foreground">
           Deze link is verlopen of al gebruikt. Vraag een nieuwe aan via{' '}
-          <a href="/login" className="underline">
+          <Link href="/login" className="underline">
             de inlogpagina
-          </a>
+          </Link>
           .
         </p>
       </main>
