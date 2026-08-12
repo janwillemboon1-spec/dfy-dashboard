@@ -46,7 +46,7 @@ interface OmzetData {
   trend: Array<{ maand: string; omzet: number; omzetStly: number; omzetNulmeting: number | null }>;
 }
 
-export function OmzetDashboard() {
+export function OmzetDashboard({ clientId }: { clientId?: string }) {
   const [periodeId, setPeriodeId] = useState<PeriodeId>('dit_jaar');
   const [eigenStart, setEigenStart] = useState('');
   const [eigenEind, setEigenEind] = useState('');
@@ -81,7 +81,8 @@ export function OmzetDashboard() {
     setDataFoutmelding(null);
     const { start, eind } = berekenPeriode(periodeId, eigenStart, eigenEind);
     const periodeType = periodeId === 'eigen' ? 'eigen' : 'vast';
-    fetch(`/api/dashboard/omzet?start=${start}&eind=${eind}&periodeType=${periodeType}`)
+    const endpoint = clientId ? `/api/admin/klanten/${clientId}/omzet` : '/api/dashboard/omzet';
+    fetch(`${endpoint}?start=${start}&eind=${eind}&periodeType=${periodeType}`)
       .then(async (r) => {
         const body = await r.json();
         if (!r.ok) throw new Error(body?.error ?? 'Ophalen van omzetdata is mislukt.');
@@ -99,7 +100,7 @@ export function OmzetDashboard() {
         if (aanvraagId !== laatsteAanvraagId.current) return;
         setLaden(false);
       });
-  }, [periodeId, eigenStart, eigenEind]);
+  }, [periodeId, eigenStart, eigenEind, clientId]);
 
   useEffect(() => {
     // laadData zelf roept setLaden/setData aan (fetch naar een externe API-route) —
@@ -169,9 +170,11 @@ export function OmzetDashboard() {
           >
             Nulmeting
           </button>
-          <Button size="sm" onClick={synchroniseer} disabled={isPending}>
-            {isPending ? 'Bezig...' : 'Data synchroniseren'}
-          </Button>
+          {!clientId && (
+            <Button size="sm" onClick={synchroniseer} disabled={isPending}>
+              {isPending ? 'Bezig...' : 'Data synchroniseren'}
+            </Button>
+          )}
         </div>
       </div>
 
