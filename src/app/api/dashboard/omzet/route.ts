@@ -30,6 +30,10 @@ export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const start = url.searchParams.get('start');
   const eind = url.searchParams.get('eind');
+  // Faalt dicht: alleen de letterlijke waarde "vast" schakelt de nulmeting-vergelijking
+  // in. Een ontbrekende/verkeerd gespelde/toekomstige param-waarde onderdrukt 'm dus
+  // (portfolioNulmeting/nulmeting = null) i.p.v. per ongeluk een misleidende
+  // nulmeting-vergelijking te berekenen tegen een periode die daar niet voor bedoeld is.
   const periodeType = url.searchParams.get('periodeType') === 'vast' ? 'vast' : 'eigen';
 
   if (!start || !eind) {
