@@ -8,6 +8,13 @@ alter table voortgang_checklist_items add column listing_id uuid references list
 alter table voortgang_todos add column listing_id uuid references listings(id) on delete set null;
 alter table voortgang_activiteitenlog add column listing_id uuid references listings(id) on delete set null;
 
+-- Matcht de bestaande conventie in dit project: elke FK-kolom krijgt een eigen index
+-- (vergelijk voortgang_checklist_items_client_id_idx e.d. hierboven) — zeker relevant
+-- hier, aangezien het hele doel van deze kolom is om erop te filteren.
+create index voortgang_checklist_items_listing_id_idx on voortgang_checklist_items(listing_id);
+create index voortgang_todos_listing_id_idx on voortgang_todos(listing_id);
+create index voortgang_activiteitenlog_listing_id_idx on voortgang_activiteitenlog(listing_id);
+
 -- De drie automatische log-triggers nemen voortaan ook de listing_id over van de rij die
 -- de logregel triggerde, zodat het activiteitenlog straks ook per woning filterbaar is.
 create or replace function log_checklist_item_afgevinkt()
