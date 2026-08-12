@@ -34,13 +34,18 @@ export function AirbnbFunnelNulmeting({
 
   if (!magBewerken) {
     return (
-      <div className="mt-6 space-y-1 text-sm">
-        <h3 className="font-medium">Nulmeting Airbnb funnel</h3>
-        {VELDEN.map((veld) => (
-          <p key={veld.sleutel} className="text-muted-foreground">
-            {veld.label}: {waarden[veld.sleutel] !== null ? `${waarden[veld.sleutel]}%` : 'Nog niet ingevuld'}
-          </p>
-        ))}
+      <div className="mt-6">
+        <h3 className="mb-2 text-sm font-medium">Nulmeting Airbnb funnel</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {VELDEN.map((veld) => (
+            <div key={veld.sleutel} className="bg-card border border-border rounded-xl p-4">
+              <p className="text-xs text-muted-foreground mb-1">{veld.label}</p>
+              <p className="text-lg font-bold">
+                {waarden[veld.sleutel] !== null ? `${waarden[veld.sleutel]}%` : '—'}
+              </p>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -57,31 +62,35 @@ export function AirbnbFunnelNulmeting({
   }
 
   return (
-    <div className="mt-6 space-y-2 rounded-md border border-border p-3 text-sm">
-      <h3 className="font-medium">Nulmeting Airbnb funnel</h3>
-      {VELDEN.map((veld) => (
-        <div key={veld.sleutel} className="flex items-center gap-2">
-          <label htmlFor={`funnel-${veld.sleutel}-${clientId}`} className="flex-1 text-xs text-muted-foreground">
-            {veld.label}
-          </label>
-          <Input
-            id={`funnel-${veld.sleutel}-${clientId}`}
-            type="number"
-            min={0}
-            max={100}
-            step={0.01}
-            value={invoer[veld.sleutel] ?? ''}
-            onChange={(e) =>
-              setInvoer((huidig) => ({
-                ...huidig,
-                [veld.sleutel]: e.target.value === '' ? null : Number(e.target.value),
-              }))
-            }
-            className="w-24"
-          />
-          <span className="text-xs text-muted-foreground">%</span>
-        </div>
-      ))}
+    <div className="mt-6 space-y-3">
+      <h3 className="text-sm font-medium">Nulmeting Airbnb funnel</h3>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {VELDEN.map((veld) => (
+          <div key={veld.sleutel} className="bg-card border border-border rounded-xl p-4">
+            <label htmlFor={`funnel-${veld.sleutel}-${clientId}`} className="block text-xs text-muted-foreground mb-1">
+              {veld.label}
+            </label>
+            <div className="flex items-center gap-1">
+              <Input
+                id={`funnel-${veld.sleutel}-${clientId}`}
+                type="number"
+                min={0}
+                max={100}
+                step={0.01}
+                value={invoer[veld.sleutel] ?? ''}
+                onChange={(e) =>
+                  setInvoer((huidig) => ({
+                    ...huidig,
+                    [veld.sleutel]: e.target.value === '' ? null : Number(e.target.value),
+                  }))
+                }
+                className="text-lg font-bold"
+              />
+              <span className="text-xs text-muted-foreground">%</span>
+            </div>
+          </div>
+        ))}
+      </div>
       <Button size="sm" disabled={isPending} onClick={opslaan}>
         {isPending ? 'Bezig...' : 'Opslaan'}
       </Button>
