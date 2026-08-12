@@ -79,6 +79,44 @@ export type Database = {
           },
         ]
       }
+      airbnb_funnel_nulmeting: {
+        Row: {
+          bijgewerkt_op: string
+          client_id: string
+          conversie_advertentie_naar_boeking: number | null
+          conversie_zoekopdracht_naar_advertentie: number | null
+          gemiddeld_conversiepercentage: number | null
+          id: string
+          percentage_zoekvertoningen_eerste_pagina: number | null
+        }
+        Insert: {
+          bijgewerkt_op?: string
+          client_id: string
+          conversie_advertentie_naar_boeking?: number | null
+          conversie_zoekopdracht_naar_advertentie?: number | null
+          gemiddeld_conversiepercentage?: number | null
+          id?: string
+          percentage_zoekvertoningen_eerste_pagina?: number | null
+        }
+        Update: {
+          bijgewerkt_op?: string
+          client_id?: string
+          conversie_advertentie_naar_boeking?: number | null
+          conversie_zoekopdracht_naar_advertentie?: number | null
+          gemiddeld_conversiepercentage?: number | null
+          id?: string
+          percentage_zoekvertoningen_eerste_pagina?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "airbnb_funnel_nulmeting_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           aangemaakt_op: string
@@ -341,6 +379,51 @@ export type Database = {
           },
         ]
       }
+      voortgang_checklist_items: {
+        Row: {
+          aangemaakt_op: string
+          afgevinkt: boolean
+          client_id: string
+          fase_nummer: number
+          id: string
+          naam: string
+          toegevoegd_door: string | null
+        }
+        Insert: {
+          aangemaakt_op?: string
+          afgevinkt?: boolean
+          client_id: string
+          fase_nummer: number
+          id?: string
+          naam: string
+          toegevoegd_door?: string | null
+        }
+        Update: {
+          aangemaakt_op?: string
+          afgevinkt?: boolean
+          client_id?: string
+          fase_nummer?: number
+          id?: string
+          naam?: string
+          toegevoegd_door?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voortgang_checklist_items_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voortgang_checklist_items_toegevoegd_door_fkey"
+            columns: ["toegevoegd_door"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       voortgang_fasen: {
         Row: {
           bijgewerkt_op: string
@@ -385,6 +468,13 @@ export type Database = {
         Returns: undefined
       }
       is_admin: { Args: never; Returns: boolean }
+      standaard_checklist_items: {
+        Args: never
+        Returns: {
+          fase_nummer: number
+          naam: string
+        }[]
+      }
     }
     Enums: {
       client_status: "onboarding" | "actief" | "gepauzeerd" | "opgezegd"
