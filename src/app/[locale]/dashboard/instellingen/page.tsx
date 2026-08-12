@@ -1,8 +1,31 @@
-export default function InstellingenPage() {
+import { redirect } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
+import { ContactgegevensFormulier } from '@/components/dashboard/contactgegevens-formulier';
+
+// Geen expliciet client_id-filter nodig op de query hieronder: de "klant leest eigen
+// client"-RLS-policy (id = current_client_id()) scopet dit al af tot precies de klant van de
+// ingelogde gebruiker. Dit klopt alleen voor een klant-sessie — dashboard/layout.tsx redirect
+// een admin-sessie al weg vóórdat deze pagina rendert.
+export default async function InstellingenPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+
+  const { data: client } = await supabase.from('clients').select('naam, telefoon, email').maybeSingle();
+
   return (
     <main className="mx-auto max-w-5xl px-4 py-12">
       <h1 className="font-serif text-2xl">Instellingen</h1>
-      <p className="mt-4 text-muted-foreground">Deze sectie is binnenkort beschikbaar.</p>
+      <div className="mt-10">
+        <h2 className="font-serif text-xl">Contactgegevens</h2>
+        <div className="mt-4">
+          <ContactgegevensFormulier
+            naam={client?.naam ?? ''}
+            telefoon={client?.telefoon ?? null}
+            email={client?.email ?? ''}
+          />
+        </div>
+      </div>
     </main>
   );
 }
