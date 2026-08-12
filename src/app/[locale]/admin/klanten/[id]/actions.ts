@@ -10,6 +10,7 @@ import { syncListingReserveringen } from '@/lib/pricelabs/reserveringen-sync';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { aggregeer } from '@/lib/dashboard/omzet-aggregatie';
 import { bepaalNulmetingBronnen } from '@/lib/dashboard/nulmeting-uit-pricelabs';
+import { sendTodoNotificatie } from '@/lib/email/send-todo-notificatie';
 
 export async function corrigeerNulmeting(input: {
   nulmetingId: string;
@@ -621,5 +622,95 @@ export async function vinkChecklistItemAf(input: {
   if (error) throw new Error(error.message);
 
   await herberekenFasePercentage(supabase, input.clientId, input.faseNummer);
+  revalidatePath(`/admin/klanten/${input.clientId}/voortgang`);
+}
+
+export async function voegTodoToe(input: {
+  clientId: string;
+  naam: string;
+  deadline: string;
+}) {
+  await assertIsAdmin();
+  if (!input.naam.trim()) throw new Error('Naam is verplicht.');
+  if (!input.deadline) throw new Error('Deadline is verplicht.');
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { error } = await supabase.from('voortgang_todos').insert({
+    client_id: input.clientId,
+    naam: input.naam.trim(),
+    deadline: input.deadline,
+    toegevoegd_door: user?.id,
+  });
+  if (error) throw new Error(error.message);
+
+  const { data: klant, error: klantError } = await supabase
+    .from('clients')
+    .select('naam, email')
+    .eq('id', input.clientId)
+    .single();
+
+  revalidatePath(`/admin/klanten/${input.clientId}/voortgang`);
+
+  if (klantError) {
+    throw new Error(`To-do toegevoegd, maar notificatie kon niet worden verstuurd: ${klantError.message}`);
+  }
+
+  try {
+    await sendTodoNotificatie({
+      klantNaam: klant.naam,
+      klantEmail: klant.email,
+      taakNaam: input.naam.trim(),
+      deadline: input.deadline,
+    });
+  } catch (emailError) {
+    throw new Error(`To-do toegevoegd, maar notificatie kon niet worden verstuurd: ${(emailError as Error).message}`);
+  }
+}
+
+export async function vinkTodoAf(input: {
+  clientId: string;
+  todoId: string;
+  afgevinkt: boolean;
+}) {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from('voortgang_todos')
+    .update({ afgevinkt: input.afgevinkt })
+    .eq('id', input.todoId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/admin/klanten/${input.clientId}/voortgang`);
+}
+
+export async function wijzigTodo(input: {
+  clientId: string;
+  todoId: string;
+  naam: string;
+  deadline: string;
+}) {
+  await assertIsAdmin();
+  if (!input.naam.trim()) throw new Error('Naam is verplicht.');
+  if (!input.deadline) throw new Error('Deadline is verplicht.');
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('voortgang_todos')
+    .update({ naam: input.naam.trim(), deadline: input.deadline })
+    .eq('id', input.todoId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/admin/klanten/${input.clientId}/voortgang`);
+}
+
+export async function verwijderTodo(input: { clientId: string; todoId: string }) {
+  await assertIsAdmin();
+  const supabase = await createClient();
+
+  const { error } = await supabase.from('voortgang_todos').delete().eq('id', input.todoId);
+  if (error) throw new Error(error.message);
+
   revalidatePath(`/admin/klanten/${input.clientId}/voortgang`);
 }
