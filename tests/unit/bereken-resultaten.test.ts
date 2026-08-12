@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { berekenMaandVergelijkingen, berekenWowCijfer, type ListingData } from '@/lib/dashboard/bereken-resultaten';
+import {
+  berekenMaandVergelijkingen,
+  berekenWowCijfer,
+  vroegsteSamenwerkingGestart,
+  type ListingData,
+} from '@/lib/dashboard/bereken-resultaten';
 
 describe('berekenMaandVergelijkingen', () => {
   it('matcht een actuele maand met de nulmeting-rij van hetzelfde maandnummer, ongeacht jaar', () => {
@@ -119,6 +124,26 @@ describe('berekenMaandVergelijkingen', () => {
       { jaar: 2026, maand: 1, nulmetingOmzet: 100, actueelOmzet: 500 },
       { jaar: 2026, maand: 6, nulmetingOmzet: 300, actueelOmzet: 800 },
     ]);
+  });
+});
+
+describe('vroegsteSamenwerkingGestart', () => {
+  it('geeft de vroegste datum terug uit meerdere', () => {
+    const resultaat = vroegsteSamenwerkingGestart(['2026-06-01', '2026-01-15', '2026-03-10']);
+    expect(resultaat).toEqual({ jaar: 2026, maand: 1 });
+  });
+
+  it('negeert null-waarden tussen echte datums', () => {
+    const resultaat = vroegsteSamenwerkingGestart([null, '2026-05-01', null, '2025-11-20']);
+    expect(resultaat).toEqual({ jaar: 2025, maand: 11 });
+  });
+
+  it('geeft null terug als alle waarden null zijn', () => {
+    expect(vroegsteSamenwerkingGestart([null, null])).toBeNull();
+  });
+
+  it('geeft null terug voor een lege lijst', () => {
+    expect(vroegsteSamenwerkingGestart([])).toBeNull();
   });
 });
 

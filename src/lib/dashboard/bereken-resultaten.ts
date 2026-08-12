@@ -85,6 +85,18 @@ export function berekenMaandVergelijkingen(listings: ListingData[]): MaandVergel
   return Array.from(perMaand.values()).sort((a, b) => a.jaar - b.jaar || a.maand - b.maand);
 }
 
+// Voor de "sinds ..."-vermelding op het klantdashboard: de vroegste samenwerking_gestart
+// over alle accommodaties van de klant, ongeacht welke accommodatie dat is. Accommodaties
+// zonder samenwerking_gestart (nog geen nulmeting via de PriceLabs-flow) tellen niet mee.
+export function vroegsteSamenwerkingGestart(data: (string | null)[]): { jaar: number; maand: number } | null {
+  const datums = data.filter((d): d is string => d !== null);
+  if (datums.length === 0) return null;
+  // ISO-datumstrings ('JJJJ-MM-DD') sorteren lexicografisch al chronologisch correct.
+  const vroegste = datums.reduce((a, b) => (a < b ? a : b));
+  const [jaarStr, maandStr] = vroegste.split('-');
+  return { jaar: Number(jaarStr), maand: Number(maandStr) };
+}
+
 export function berekenWowCijfer(vergelijkingen: MaandVergelijking[]): number | null {
   if (vergelijkingen.length === 0) return null;
   return vergelijkingen.reduce((totaal, rij) => totaal + (rij.actueelOmzet - rij.nulmetingOmzet), 0);
