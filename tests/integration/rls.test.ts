@@ -194,4 +194,36 @@ describe('RLS: klant-isolatie', () => {
     // resulteert in een Postgres-foutmelding, niet in stilzwijgend niets doen.
     expect(error).not.toBeNull();
   });
+
+  it('klant B leest alleen de airbnb_funnel_nulmeting van de eigen woning, niet van klant A', async () => {
+    const { data: funnelA } = await admin
+      .from('airbnb_funnel_nulmeting')
+      .insert({ listing_id: klantAListingId, gemiddeld_conversiepercentage: 5 })
+      .select()
+      .single();
+    const { data: funnelB } = await admin
+      .from('airbnb_funnel_nulmeting')
+      .insert({ listing_id: klantBListingId, gemiddeld_conversiepercentage: 15 })
+      .select()
+      .single();
+
+    const klantClient = createClient(url, anonKey);
+    await klantClient.auth.signInWithPassword({ email: klantBEmail, password: klantBWachtwoord });
+
+    const eigen = await klantClient
+      .from('airbnb_funnel_nulmeting')
+      .select('*')
+      .eq('listing_id', klantBListingId);
+    expect(eigen.data).toHaveLength(1);
+    expect(eigen.data![0].gemiddeld_conversiepercentage).toBe(15);
+
+    const ander = await klantClient
+      .from('airbnb_funnel_nulmeting')
+      .select('*')
+      .eq('listing_id', klantAListingId);
+    expect(ander.data).toEqual([]);
+
+    await admin.from('airbnb_funnel_nulmeting').delete().eq('id', funnelA!.id);
+    await admin.from('airbnb_funnel_nulmeting').delete().eq('id', funnelB!.id);
+  });
 });
