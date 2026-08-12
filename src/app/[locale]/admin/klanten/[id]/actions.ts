@@ -574,6 +574,7 @@ export async function voegChecklistItemToe(input: {
   clientId: string;
   faseNummer: 1 | 2 | 3;
   naam: string;
+  listingId?: string | null;
 }) {
   await assertIsAdmin();
   if (!input.naam.trim()) throw new Error('Naam is verplicht.');
@@ -585,6 +586,7 @@ export async function voegChecklistItemToe(input: {
     client_id: input.clientId,
     fase_nummer: input.faseNummer,
     naam: input.naam.trim(),
+    listing_id: input.listingId ?? null,
     toegevoegd_door: user?.id,
   });
   if (error) throw new Error(error.message);
@@ -645,6 +647,7 @@ export async function voegTodoToe(input: {
   clientId: string;
   naam: string;
   deadline: string;
+  listingId?: string | null;
 }) {
   await assertIsAdmin();
   if (!input.naam.trim()) throw new Error('Naam is verplicht.');
@@ -657,6 +660,7 @@ export async function voegTodoToe(input: {
     client_id: input.clientId,
     naam: input.naam.trim(),
     deadline: input.deadline,
+    listing_id: input.listingId ?? null,
     toegevoegd_door: user?.id,
   });
   if (error) throw new Error(error.message);
@@ -706,6 +710,7 @@ export async function wijzigTodo(input: {
   todoId: string;
   naam: string;
   deadline: string;
+  listingId?: string | null;
 }) {
   await assertIsAdmin();
   if (!input.naam.trim()) throw new Error('Naam is verplicht.');
@@ -714,7 +719,7 @@ export async function wijzigTodo(input: {
   const supabase = await createClient();
   const { error } = await supabase
     .from('voortgang_todos')
-    .update({ naam: input.naam.trim(), deadline: input.deadline })
+    .update({ naam: input.naam.trim(), deadline: input.deadline, listing_id: input.listingId ?? null })
     .eq('id', input.todoId);
   if (error) throw new Error(error.message);
 
@@ -735,6 +740,7 @@ export async function voegActiviteitToe(input: {
   clientId: string;
   datum: string;
   omschrijving: string;
+  listingId?: string | null;
 }) {
   await assertIsAdmin();
   if (!input.omschrijving.trim()) throw new Error('Omschrijving is verplicht.');
@@ -746,6 +752,7 @@ export async function voegActiviteitToe(input: {
     client_id: input.clientId,
     datum: input.datum,
     omschrijving: input.omschrijving.trim(),
+    listing_id: input.listingId ?? null,
     toegevoegd_door: user?.id,
   });
   if (error) throw new Error(error.message);

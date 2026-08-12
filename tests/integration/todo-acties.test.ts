@@ -174,6 +174,31 @@ describe('voegTodoToe', () => {
       .maybeSingle();
     expect(todo).not.toBeNull();
   });
+
+  it('slaat listingId op als die is meegegeven, en laat het veld leeg (algemeen) als die ontbreekt', async () => {
+    activeCookieStore = await loginAlsCookieStore(adminEmail, wachtwoord);
+    vi.mocked(sendTodoNotificatie).mockClear();
+
+    const { data: listing } = await admin
+      .from('listings')
+      .insert({ client_id: clientId, naam: 'Todo-test woning' })
+      .select()
+      .single();
+
+    await voegTodoToe({ clientId, naam: 'Taak voor specifieke woning', deadline: '2026-09-05', listingId: listing!.id });
+    await voegTodoToe({ clientId, naam: 'Algemene taak', deadline: '2026-09-05' });
+
+    const { data: todos } = await admin
+      .from('voortgang_todos')
+      .select('naam, listing_id')
+      .eq('client_id', clientId)
+      .in('naam', ['Taak voor specifieke woning', 'Algemene taak']);
+
+    const specifiek = todos!.find((t) => t.naam === 'Taak voor specifieke woning');
+    const algemeen = todos!.find((t) => t.naam === 'Algemene taak');
+    expect(specifiek!.listing_id).toBe(listing!.id);
+    expect(algemeen!.listing_id).toBeNull();
+  });
 });
 
 describe('vinkTodoAf', () => {
@@ -263,6 +288,28 @@ describe('wijzigTodo en verwijderTodo', () => {
     const { data: todoNa } = await admin.from('voortgang_todos').select('naam, deadline').eq('id', todo!.id).single();
     expect(todoNa!.naam).toBe('Nieuwe naam');
     expect(todoNa!.deadline).toBe('2026-09-09');
+  });
+
+  it('wijzigt het listingId-label van een to-do', async () => {
+    activeCookieStore = await loginAlsCookieStore(adminEmail, wachtwoord);
+    await voegTodoToe({ clientId, naam: 'Taak om te herlabelen', deadline: '2026-09-11' });
+    const { data: todo } = await admin
+      .from('voortgang_todos')
+      .select('id')
+      .eq('client_id', clientId)
+      .eq('naam', 'Taak om te herlabelen')
+      .single();
+
+    const { data: listing } = await admin
+      .from('listings')
+      .insert({ client_id: clientId, naam: 'Herlabel-test woning' })
+      .select()
+      .single();
+
+    await wijzigTodo({ clientId, todoId: todo!.id, naam: 'Taak om te herlabelen', deadline: '2026-09-11', listingId: listing!.id });
+
+    const { data: todoNa } = await admin.from('voortgang_todos').select('listing_id').eq('id', todo!.id).single();
+    expect(todoNa!.listing_id).toBe(listing!.id);
   });
 
   it('verwijdert de to-do', async () => {

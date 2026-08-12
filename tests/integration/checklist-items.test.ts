@@ -95,6 +95,30 @@ describe('voegChecklistItemToe', () => {
       voegChecklistItemToe({ clientId, faseNummer: 1, naam: '   ' })
     ).rejects.toThrow('Naam is verplicht.');
   });
+
+  it('slaat listingId op als die is meegegeven, en laat het veld leeg (algemeen) als die ontbreekt', async () => {
+    activeCookieStore = await loginAlsCookieStore(adminEmail, wachtwoord);
+
+    const { data: listing } = await admin
+      .from('listings')
+      .insert({ client_id: clientId, naam: 'Checklist-test woning' })
+      .select()
+      .single();
+
+    await voegChecklistItemToe({ clientId, faseNummer: 1, naam: 'Item voor specifieke woning', listingId: listing!.id });
+    await voegChecklistItemToe({ clientId, faseNummer: 1, naam: 'Algemeen item' });
+
+    const { data: items } = await admin
+      .from('voortgang_checklist_items')
+      .select('naam, listing_id')
+      .eq('client_id', clientId)
+      .in('naam', ['Item voor specifieke woning', 'Algemeen item']);
+
+    const specifiek = items!.find((i) => i.naam === 'Item voor specifieke woning');
+    const algemeen = items!.find((i) => i.naam === 'Algemeen item');
+    expect(specifiek!.listing_id).toBe(listing!.id);
+    expect(algemeen!.listing_id).toBeNull();
+  });
 });
 
 describe('checklist en fase-percentage herberekening', () => {
