@@ -51,6 +51,8 @@ let klantAUserId: string;
 
 let clientBId: string;
 
+let clientCId: string;
+
 let adminEmail: string;
 let adminUserId: string;
 
@@ -99,6 +101,13 @@ beforeAll(async () => {
     booking_status: 'booked',
   });
 
+  const { data: clientC } = await admin
+    .from('clients')
+    .insert({ naam: 'Omzetroute Klant C (geen listings)', email: `omzetroute-c-${suffix}@test.local` })
+    .select()
+    .single();
+  clientCId = clientC!.id;
+
   klantAEmail = `omzetroute-klant-a-${suffix}@test.local`;
   const { data: klantAUserRes } = await admin.auth.admin.createUser({
     email: klantAEmail,
@@ -123,6 +132,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await admin.from('clients').delete().eq('id', clientAId);
   await admin.from('clients').delete().eq('id', clientBId);
+  await admin.from('clients').delete().eq('id', clientCId);
   await admin.auth.admin.deleteUser(klantAUserId);
   await admin.auth.admin.deleteUser(adminUserId);
 });
@@ -167,5 +177,15 @@ describe('GET /api/admin/klanten/[id]/omzet', () => {
     expect(body.portfolio.omzet).toBe(300);
     expect(body.listings).toHaveLength(1);
     expect(body.listings[0].listing_naam).toBe('Listing A');
+  });
+
+  it('geeft lege, geldige cijfers voor een klant zonder listings (geen .in() met een lege lijst)', async () => {
+    activeCookieStore = await loginAlsCookieStore(adminEmail, wachtwoord);
+    const response = await verzoek(clientCId, '?start=2026-01-01&eind=2026-01-31&periodeType=eigen');
+    expect(response.status).toBe(200);
+    const body = await response.json();
+
+    expect(body.portfolio.omzet).toBe(0);
+    expect(body.listings).toHaveLength(0);
   });
 });
