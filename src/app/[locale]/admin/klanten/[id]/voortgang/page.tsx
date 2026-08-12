@@ -7,12 +7,14 @@ import { ChecklistItemToevoegenFormulier } from '@/components/admin/checklist-it
 import { VoortgangsTodos } from '@/components/portal/voortgangs-todos';
 import type { Todo } from '@/components/portal/todo-rij';
 import { TodoToevoegenFormulier } from '@/components/admin/todo-toevoegen-formulier';
+import { VoortgangsActiviteitenlog, type ActiviteitenlogItem } from '@/components/portal/voortgangs-activiteitenlog';
+import { ActiviteitToevoegenFormulier } from '@/components/admin/activiteit-toevoegen-formulier';
 
 export default async function VoortgangPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data: fasen }, { data: items }, { data: funnel }, { data: todos }] = await Promise.all([
+  const [{ data: fasen }, { data: items }, { data: funnel }, { data: todos }, { data: activiteiten }] = await Promise.all([
     supabase.from('voortgang_fasen').select('fase_nummer, percentage').eq('client_id', id),
     supabase.from('voortgang_checklist_items').select('id, fase_nummer, naam, afgevinkt').eq('client_id', id),
     supabase
@@ -23,6 +25,7 @@ export default async function VoortgangPage({ params }: { params: Promise<{ id: 
       .eq('client_id', id)
       .maybeSingle(),
     supabase.from('voortgang_todos').select('id, naam, deadline, afgevinkt').eq('client_id', id),
+    supabase.from('voortgang_activiteitenlog').select('id, datum, omschrijving').eq('client_id', id),
   ]);
 
   const fasenData: FaseVoortgang[] = (fasen ?? []).map((f) => ({
@@ -34,6 +37,11 @@ export default async function VoortgangPage({ params }: { params: Promise<{ id: 
     faseNummer: i.fase_nummer as 1 | 2 | 3,
     naam: i.naam,
     afgevinkt: i.afgevinkt,
+  }));
+  const activiteitenData: ActiviteitenlogItem[] = (activiteiten ?? []).map((a) => ({
+    id: a.id,
+    datum: a.datum,
+    omschrijving: a.omschrijving,
   }));
 
   return (
@@ -67,6 +75,13 @@ export default async function VoortgangPage({ params }: { params: Promise<{ id: 
           <VoortgangsTodos todos={(todos ?? []) as Todo[]} clientId={id} isAdmin />
         </div>
         <TodoToevoegenFormulier clientId={id} />
+      </div>
+      <div className="mt-10">
+        <h2 className="font-serif text-xl">Activiteitenlog</h2>
+        <div className="mt-4">
+          <VoortgangsActiviteitenlog items={activiteitenData} />
+        </div>
+        <ActiviteitToevoegenFormulier clientId={id} />
       </div>
     </main>
   );
