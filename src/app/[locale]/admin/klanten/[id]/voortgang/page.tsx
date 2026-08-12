@@ -4,12 +4,15 @@ import { VoortgangsChecklist, type ChecklistItem } from '@/components/portal/voo
 import { AirbnbFunnelNulmeting } from '@/components/portal/airbnb-funnel-nulmeting';
 import { FaseVoortgangFormulier } from '@/components/admin/fase-voortgang-formulier';
 import { ChecklistItemToevoegenFormulier } from '@/components/admin/checklist-item-toevoegen-formulier';
+import { VoortgangsTodos } from '@/components/portal/voortgangs-todos';
+import type { Todo } from '@/components/portal/todo-rij';
+import { TodoToevoegenFormulier } from '@/components/admin/todo-toevoegen-formulier';
 
 export default async function VoortgangPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data: fasen }, { data: items }, { data: funnel }] = await Promise.all([
+  const [{ data: fasen }, { data: items }, { data: funnel }, { data: todos }] = await Promise.all([
     supabase.from('voortgang_fasen').select('fase_nummer, percentage').eq('client_id', id),
     supabase.from('voortgang_checklist_items').select('id, fase_nummer, naam, afgevinkt').eq('client_id', id),
     supabase
@@ -19,6 +22,7 @@ export default async function VoortgangPage({ params }: { params: Promise<{ id: 
       )
       .eq('client_id', id)
       .maybeSingle(),
+    supabase.from('voortgang_todos').select('id, naam, deadline, afgevinkt').eq('client_id', id),
   ]);
 
   const fasenData: FaseVoortgang[] = (fasen ?? []).map((f) => ({
@@ -56,6 +60,13 @@ export default async function VoortgangPage({ params }: { params: Promise<{ id: 
           nulmetingDatum={funnel?.nulmeting_datum ?? null}
           magBewerken
         />
+      </div>
+      <div className="mt-10">
+        <h2 className="font-serif text-xl">To-do&apos;s</h2>
+        <div className="mt-4">
+          <VoortgangsTodos todos={(todos ?? []) as Todo[]} clientId={id} isAdmin />
+        </div>
+        <TodoToevoegenFormulier clientId={id} />
       </div>
     </main>
   );

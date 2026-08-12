@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server';
 import { VoortgangsBalk, type FaseVoortgang } from '@/components/portal/voortgangs-balk';
 import { VoortgangsChecklist, type ChecklistItem } from '@/components/portal/voortgangs-checklist';
 import { AirbnbFunnelNulmeting } from '@/components/portal/airbnb-funnel-nulmeting';
+import { VoortgangsTodos } from '@/components/portal/voortgangs-todos';
+import type { Todo } from '@/components/portal/todo-rij';
 
 // Geen expliciet client_id-filter nodig op de queries hieronder: de "klant leest eigen ..."
 // RLS-policies scopen dit al af tot precies de data van de ingelogde klant. Dit klopt alleen
@@ -16,7 +18,7 @@ export default async function VoortgangPage() {
   const { data: profile } = await supabase.from('profiles').select('client_id').eq('id', user.id).maybeSingle();
   const clientId = profile?.client_id ?? '';
 
-  const [{ data: fasen }, { data: items }, { data: funnel }] = await Promise.all([
+  const [{ data: fasen }, { data: items }, { data: funnel }, { data: todos }] = await Promise.all([
     supabase.from('voortgang_fasen').select('fase_nummer, percentage'),
     supabase.from('voortgang_checklist_items').select('id, fase_nummer, naam, afgevinkt'),
     supabase
@@ -25,6 +27,7 @@ export default async function VoortgangPage() {
         'gemiddeld_conversiepercentage, percentage_zoekvertoningen_eerste_pagina, conversie_zoekopdracht_naar_advertentie, conversie_advertentie_naar_boeking, nulmeting_datum'
       )
       .maybeSingle(),
+    supabase.from('voortgang_todos').select('id, naam, deadline, afgevinkt'),
   ]);
 
   const fasenData: FaseVoortgang[] = (fasen ?? []).map((f) => ({
@@ -60,6 +63,12 @@ export default async function VoortgangPage() {
           nulmetingDatum={funnel?.nulmeting_datum ?? null}
           magBewerken={false}
         />
+      </div>
+      <div className="mt-10">
+        <h2 className="font-serif text-xl">To-do&apos;s</h2>
+        <div className="mt-4">
+          <VoortgangsTodos todos={(todos ?? []) as Todo[]} clientId={clientId} isAdmin={false} />
+        </div>
       </div>
     </main>
   );
