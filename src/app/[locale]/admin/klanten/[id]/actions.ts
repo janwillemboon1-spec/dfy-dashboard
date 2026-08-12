@@ -597,6 +597,7 @@ export async function voegChecklistItemToe(input: {
 
 export async function werkAirbnbFunnelNulmetingBij(input: {
   clientId: string;
+  listingId: string;
   gemiddeldConversiepercentage: number | null;
   percentageZoekvertoningenEerstePagina: number | null;
   conversieZoekopdrachtNaarAdvertentie: number | null;
@@ -610,14 +611,14 @@ export async function werkAirbnbFunnelNulmetingBij(input: {
     .from('airbnb_funnel_nulmeting')
     .upsert(
       {
-        client_id: input.clientId,
+        listing_id: input.listingId,
         gemiddeld_conversiepercentage: input.gemiddeldConversiepercentage,
         percentage_zoekvertoningen_eerste_pagina: input.percentageZoekvertoningenEerstePagina,
         conversie_zoekopdracht_naar_advertentie: input.conversieZoekopdrachtNaarAdvertentie,
         conversie_advertentie_naar_boeking: input.conversieAdvertentieNaarBoeking,
         nulmeting_datum: input.nulmetingDatum,
       },
-      { onConflict: 'client_id' }
+      { onConflict: 'listing_id' }
     );
   if (error) throw new Error(error.message);
 

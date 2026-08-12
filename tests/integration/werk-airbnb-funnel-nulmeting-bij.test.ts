@@ -39,6 +39,8 @@ async function loginAlsCookieStore(email: string, password: string) {
 }
 
 let clientId: string;
+let listingAId: string;
+let listingBId: string;
 let adminEmail: string;
 let adminUserId: string;
 let klantEmail: string;
@@ -53,6 +55,20 @@ beforeAll(async () => {
     .select()
     .single();
   clientId = client!.id;
+
+  const { data: listingA } = await admin
+    .from('listings')
+    .insert({ client_id: clientId, naam: 'Funnel Klant Woning A' })
+    .select()
+    .single();
+  listingAId = listingA!.id;
+
+  const { data: listingB } = await admin
+    .from('listings')
+    .insert({ client_id: clientId, naam: 'Funnel Klant Woning B' })
+    .select()
+    .single();
+  listingBId = listingB!.id;
 
   adminEmail = `funnel-admin-${suffix}@test.local`;
   const { data: adminUserRes } = await admin.auth.admin.createUser({
@@ -87,6 +103,7 @@ describe('werkAirbnbFunnelNulmetingBij', () => {
     await expect(
       werkAirbnbFunnelNulmetingBij({
         clientId,
+        listingId: listingAId,
         gemiddeldConversiepercentage: 5,
         percentageZoekvertoningenEerstePagina: 10,
         conversieZoekopdrachtNaarAdvertentie: 15,
@@ -96,11 +113,12 @@ describe('werkAirbnbFunnelNulmetingBij', () => {
     ).rejects.toThrow('Niet geautoriseerd.');
   });
 
-  it('maakt een nieuwe rij aan en werkt die daarna bij i.p.v. te dupliceren', async () => {
+  it('maakt een nieuwe rij aan voor de woning en werkt die daarna bij i.p.v. te dupliceren', async () => {
     activeCookieStore = await loginAlsCookieStore(adminEmail, wachtwoord);
 
     await werkAirbnbFunnelNulmetingBij({
       clientId,
+      listingId: listingAId,
       gemiddeldConversiepercentage: 5.5,
       percentageZoekvertoningenEerstePagina: 10.25,
       conversieZoekopdrachtNaarAdvertentie: 15,
@@ -111,13 +129,14 @@ describe('werkAirbnbFunnelNulmetingBij', () => {
     const { data: rij1 } = await admin
       .from('airbnb_funnel_nulmeting')
       .select('*')
-      .eq('client_id', clientId)
+      .eq('listing_id', listingAId)
       .single();
     expect(rij1!.gemiddeld_conversiepercentage).toBe(5.5);
     expect(rij1!.nulmeting_datum).toBe('2026-08-01');
 
     await werkAirbnbFunnelNulmetingBij({
       clientId,
+      listingId: listingAId,
       gemiddeldConversiepercentage: 6,
       percentageZoekvertoningenEerstePagina: 10.25,
       conversieZoekopdrachtNaarAdvertentie: 15,
@@ -128,9 +147,46 @@ describe('werkAirbnbFunnelNulmetingBij', () => {
     const { data: rijen } = await admin
       .from('airbnb_funnel_nulmeting')
       .select('*')
-      .eq('client_id', clientId);
+      .eq('listing_id', listingAId);
     expect(rijen).toHaveLength(1);
     expect(rijen![0].gemiddeld_conversiepercentage).toBe(6);
+  });
+
+  it('houdt de funnel-cijfers van twee woningen van dezelfde klant volledig onafhankelijk van elkaar', async () => {
+    activeCookieStore = await loginAlsCookieStore(adminEmail, wachtwoord);
+
+    await werkAirbnbFunnelNulmetingBij({
+      clientId,
+      listingId: listingAId,
+      gemiddeldConversiepercentage: 10,
+      percentageZoekvertoningenEerstePagina: 10,
+      conversieZoekopdrachtNaarAdvertentie: 10,
+      conversieAdvertentieNaarBoeking: 10,
+      nulmetingDatum: '2026-08-01',
+    });
+    await werkAirbnbFunnelNulmetingBij({
+      clientId,
+      listingId: listingBId,
+      gemiddeldConversiepercentage: 20,
+      percentageZoekvertoningenEerstePagina: 20,
+      conversieZoekopdrachtNaarAdvertentie: 20,
+      conversieAdvertentieNaarBoeking: 20,
+      nulmetingDatum: '2026-08-02',
+    });
+
+    const { data: rijA } = await admin
+      .from('airbnb_funnel_nulmeting')
+      .select('gemiddeld_conversiepercentage')
+      .eq('listing_id', listingAId)
+      .single();
+    expect(rijA!.gemiddeld_conversiepercentage).toBe(10);
+
+    const { data: rijB } = await admin
+      .from('airbnb_funnel_nulmeting')
+      .select('gemiddeld_conversiepercentage')
+      .eq('listing_id', listingBId)
+      .single();
+    expect(rijB!.gemiddeld_conversiepercentage).toBe(20);
   });
 
   it('laat het bijbehorende checklist-item "Nulmeting Airbnb funnel" ongemoeid', async () => {
@@ -146,6 +202,7 @@ describe('werkAirbnbFunnelNulmetingBij', () => {
 
     await werkAirbnbFunnelNulmetingBij({
       clientId,
+      listingId: listingAId,
       gemiddeldConversiepercentage: 8,
       percentageZoekvertoningenEerstePagina: 12,
       conversieZoekopdrachtNaarAdvertentie: 18,
