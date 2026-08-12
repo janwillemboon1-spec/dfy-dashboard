@@ -24,7 +24,7 @@ export function ChecklistItemRij({
   if (!magBewerken) {
     return (
       <span className="flex items-center gap-2 text-sm text-muted-foreground">
-        <span aria-hidden>{afgevinkt ? '☑' : '☐'}</span>
+        <span aria-hidden className={afgevinkt ? 'text-green-600' : ''}>{afgevinkt ? '☑' : '☐'}</span>
         {naam}
       </span>
     );
@@ -44,7 +44,13 @@ export function ChecklistItemRij({
   return (
     <div>
       <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={afgevinkt} disabled={isPending} onChange={toggle} />
+        <input
+          type="checkbox"
+          checked={afgevinkt}
+          disabled={isPending}
+          onChange={toggle}
+          className="accent-green-600"
+        />
         {naam}
       </label>
       {foutmelding && <p className="text-xs text-destructive">{foutmelding}</p>}

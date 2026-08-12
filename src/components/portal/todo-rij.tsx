@@ -63,7 +63,13 @@ export function TodoRij({
 
   return (
     <div className="flex items-center gap-2 text-sm">
-      <input type="checkbox" checked={todo.afgevinkt} disabled={isPending} onChange={toggleAfvinken} />
+      <input
+        type="checkbox"
+        checked={todo.afgevinkt}
+        disabled={isPending}
+        onChange={toggleAfvinken}
+        className="accent-green-600"
+      />
       <span className={todo.afgevinkt ? 'line-through text-muted-foreground' : ''}>{todo.naam}</span>
       <span className="text-xs text-muted-foreground">— {formatteerDeadline(todo.deadline)}</span>
       {isAdmin && (
