@@ -3,23 +3,24 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 
-interface ActielogItem {
+export interface ActiviteitenlogItem {
   id: string;
   datum: string;
   omschrijving: string;
 }
 
-export function ActielogTijdlijn({ items }: { items: ActielogItem[] }) {
+export function VoortgangsActiviteitenlog({ items }: { items: ActiviteitenlogItem[] }) {
   const [toonAlles, setToonAlles] = useState(false);
 
-  if (items.length === 0) return null;
+  if (items.length === 0) {
+    return <p className="text-sm text-muted-foreground">Nog geen activiteiten geregistreerd.</p>;
+  }
 
   const gesorteerd = [...items].sort((a, b) => (a.datum < b.datum ? 1 : -1));
   const zichtbaar = toonAlles ? gesorteerd : gesorteerd.slice(0, 5);
 
   return (
     <div className="space-y-2">
-      <h2 className="text-sm font-medium text-muted-foreground">Wat we voor je deden</h2>
       <ul className="space-y-1 text-sm">
         {zichtbaar.map((item) => (
           <li key={item.id} className="text-muted-foreground">
