@@ -576,6 +576,33 @@ export async function voegChecklistItemToe(input: {
   revalidatePath(`/admin/klanten/${input.clientId}/voortgang`);
 }
 
+export async function werkAirbnbFunnelNulmetingBij(input: {
+  clientId: string;
+  gemiddeldConversiepercentage: number | null;
+  percentageZoekvertoningenEerstePagina: number | null;
+  conversieZoekopdrachtNaarAdvertentie: number | null;
+  conversieAdvertentieNaarBoeking: number | null;
+}) {
+  await assertIsAdmin();
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from('airbnb_funnel_nulmeting')
+    .upsert(
+      {
+        client_id: input.clientId,
+        gemiddeld_conversiepercentage: input.gemiddeldConversiepercentage,
+        percentage_zoekvertoningen_eerste_pagina: input.percentageZoekvertoningenEerstePagina,
+        conversie_zoekopdracht_naar_advertentie: input.conversieZoekopdrachtNaarAdvertentie,
+        conversie_advertentie_naar_boeking: input.conversieAdvertentieNaarBoeking,
+      },
+      { onConflict: 'client_id' }
+    );
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/admin/klanten/${input.clientId}/voortgang`);
+}
+
 export async function vinkChecklistItemAf(input: {
   clientId: string;
   itemId: string;
