@@ -87,6 +87,7 @@ export type Database = {
           conversie_zoekopdracht_naar_advertentie: number | null
           gemiddeld_conversiepercentage: number | null
           id: string
+          nulmeting_datum: string | null
           percentage_zoekvertoningen_eerste_pagina: number | null
         }
         Insert: {
@@ -96,6 +97,7 @@ export type Database = {
           conversie_zoekopdracht_naar_advertentie?: number | null
           gemiddeld_conversiepercentage?: number | null
           id?: string
+          nulmeting_datum?: string | null
           percentage_zoekvertoningen_eerste_pagina?: number | null
         }
         Update: {
@@ -105,6 +107,7 @@ export type Database = {
           conversie_zoekopdracht_naar_advertentie?: number | null
           gemiddeld_conversiepercentage?: number | null
           id?: string
+          nulmeting_datum?: string | null
           percentage_zoekvertoningen_eerste_pagina?: number | null
         }
         Relationships: [

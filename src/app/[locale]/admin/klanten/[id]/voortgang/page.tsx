@@ -15,7 +15,7 @@ export default async function VoortgangPage({ params }: { params: Promise<{ id: 
     supabase
       .from('airbnb_funnel_nulmeting')
       .select(
-        'gemiddeld_conversiepercentage, percentage_zoekvertoningen_eerste_pagina, conversie_zoekopdracht_naar_advertentie, conversie_advertentie_naar_boeking'
+        'gemiddeld_conversiepercentage, percentage_zoekvertoningen_eerste_pagina, conversie_zoekopdracht_naar_advertentie, conversie_advertentie_naar_boeking, nulmeting_datum'
       )
       .eq('client_id', id)
       .maybeSingle(),
@@ -53,6 +53,7 @@ export default async function VoortgangPage({ params }: { params: Promise<{ id: 
             conversieZoekopdrachtNaarAdvertentie: funnel?.conversie_zoekopdracht_naar_advertentie ?? null,
             conversieAdvertentieNaarBoeking: funnel?.conversie_advertentie_naar_boeking ?? null,
           }}
+          nulmetingDatum={funnel?.nulmeting_datum ?? null}
           magBewerken
         />
       </div>

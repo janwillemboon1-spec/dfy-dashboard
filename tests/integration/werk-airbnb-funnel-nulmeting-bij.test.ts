@@ -91,6 +91,7 @@ describe('werkAirbnbFunnelNulmetingBij', () => {
         percentageZoekvertoningenEerstePagina: 10,
         conversieZoekopdrachtNaarAdvertentie: 15,
         conversieAdvertentieNaarBoeking: 20,
+        nulmetingDatum: '2026-08-01',
       })
     ).rejects.toThrow('Niet geautoriseerd.');
   });
@@ -104,6 +105,7 @@ describe('werkAirbnbFunnelNulmetingBij', () => {
       percentageZoekvertoningenEerstePagina: 10.25,
       conversieZoekopdrachtNaarAdvertentie: 15,
       conversieAdvertentieNaarBoeking: 20,
+      nulmetingDatum: '2026-08-01',
     });
 
     const { data: rij1 } = await admin
@@ -112,6 +114,7 @@ describe('werkAirbnbFunnelNulmetingBij', () => {
       .eq('client_id', clientId)
       .single();
     expect(rij1!.gemiddeld_conversiepercentage).toBe(5.5);
+    expect(rij1!.nulmeting_datum).toBe('2026-08-01');
 
     await werkAirbnbFunnelNulmetingBij({
       clientId,
@@ -119,6 +122,7 @@ describe('werkAirbnbFunnelNulmetingBij', () => {
       percentageZoekvertoningenEerstePagina: 10.25,
       conversieZoekopdrachtNaarAdvertentie: 15,
       conversieAdvertentieNaarBoeking: 20,
+      nulmetingDatum: '2026-08-01',
     });
 
     const { data: rijen } = await admin
@@ -146,6 +150,7 @@ describe('werkAirbnbFunnelNulmetingBij', () => {
       percentageZoekvertoningenEerstePagina: 12,
       conversieZoekopdrachtNaarAdvertentie: 18,
       conversieAdvertentieNaarBoeking: 22,
+      nulmetingDatum: '2026-08-01',
     });
 
     const { data: itemNa } = await admin

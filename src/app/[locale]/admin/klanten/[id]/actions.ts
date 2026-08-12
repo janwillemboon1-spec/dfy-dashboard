@@ -582,6 +582,7 @@ export async function werkAirbnbFunnelNulmetingBij(input: {
   percentageZoekvertoningenEerstePagina: number | null;
   conversieZoekopdrachtNaarAdvertentie: number | null;
   conversieAdvertentieNaarBoeking: number | null;
+  nulmetingDatum: string | null;
 }) {
   await assertIsAdmin();
   const supabase = await createClient();
@@ -595,6 +596,7 @@ export async function werkAirbnbFunnelNulmetingBij(input: {
         percentage_zoekvertoningen_eerste_pagina: input.percentageZoekvertoningenEerstePagina,
         conversie_zoekopdracht_naar_advertentie: input.conversieZoekopdrachtNaarAdvertentie,
         conversie_advertentie_naar_boeking: input.conversieAdvertentieNaarBoeking,
+        nulmeting_datum: input.nulmetingDatum,
       },
       { onConflict: 'client_id' }
     );

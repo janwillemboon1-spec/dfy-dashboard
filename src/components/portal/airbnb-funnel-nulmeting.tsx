@@ -19,16 +19,27 @@ const VELDEN: { sleutel: keyof AirbnbFunnelWaarden; label: string }[] = [
   { sleutel: 'conversieAdvertentieNaarBoeking', label: 'Gemiddelde conversie van advertentie naar boeking' },
 ];
 
+function formatteerDatum(datum: string): string {
+  return new Date(`${datum}T00:00:00Z`).toLocaleDateString('nl-NL', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
 export function AirbnbFunnelNulmeting({
   clientId,
   waarden,
+  nulmetingDatum,
   magBewerken,
 }: {
   clientId: string;
   waarden: AirbnbFunnelWaarden;
+  nulmetingDatum: string | null;
   magBewerken: boolean;
 }) {
   const [invoer, setInvoer] = useState(waarden);
+  const [datum, setDatum] = useState(nulmetingDatum ?? '');
   const [foutmelding, setFoutmelding] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -46,6 +57,9 @@ export function AirbnbFunnelNulmeting({
             </div>
           ))}
         </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          {nulmetingDatum ? `Gemeten op ${formatteerDatum(nulmetingDatum)}` : 'Meetdatum nog niet ingevuld'}
+        </p>
       </div>
     );
   }
@@ -54,7 +68,7 @@ export function AirbnbFunnelNulmeting({
     setFoutmelding(null);
     startTransition(async () => {
       try {
-        await werkAirbnbFunnelNulmetingBij({ clientId, ...invoer });
+        await werkAirbnbFunnelNulmetingBij({ clientId, ...invoer, nulmetingDatum: datum || null });
       } catch (error) {
         setFoutmelding((error as Error).message);
       }
@@ -90,6 +104,18 @@ export function AirbnbFunnelNulmeting({
             </div>
           </div>
         ))}
+      </div>
+      <div>
+        <label htmlFor={`funnel-datum-${clientId}`} className="block text-xs text-muted-foreground mb-1">
+          Datum van de meting
+        </label>
+        <Input
+          id={`funnel-datum-${clientId}`}
+          type="date"
+          value={datum}
+          onChange={(e) => setDatum(e.target.value)}
+          className="w-auto"
+        />
       </div>
       <Button size="sm" disabled={isPending} onClick={opslaan}>
         {isPending ? 'Bezig...' : 'Opslaan'}
