@@ -1,4 +1,12 @@
-export function WowCijfer({ bedrag }: { bedrag: number | null }) {
+import { MAAND_NAMEN_VOL } from '@/lib/constants/maanden';
+
+export function WowCijfer({
+  bedrag,
+  startmaand,
+}: {
+  bedrag: number | null;
+  startmaand: { jaar: number; maand: number } | null;
+}) {
   if (bedrag === null) {
     return (
       <div className="py-12 text-center">
@@ -22,13 +30,17 @@ export function WowCijfer({ bedrag }: { bedrag: number | null }) {
 
   return (
     <div className="py-12 text-center">
-      <p className="text-sm text-muted-foreground">
-        Extra omzet t.o.v. dezelfde periode vóór Boon Vakantieverhuur
-      </p>
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Impactmeter</p>
+      <p className="mt-1 text-sm text-muted-foreground">Extra inkomsten sinds start samenwerking</p>
       <h2 className="mt-2 font-serif text-5xl font-medium">
         <span className="sr-only">{bedrag >= 0 ? 'Toename van ' : 'Afname van '}</span>
         {teken} € {bedragTekst}
       </h2>
+      {startmaand && (
+        <p className="mt-2 text-sm text-muted-foreground">
+          sinds {MAAND_NAMEN_VOL[startmaand.maand - 1]} {startmaand.jaar}
+        </p>
+      )}
     </div>
   );
 }
