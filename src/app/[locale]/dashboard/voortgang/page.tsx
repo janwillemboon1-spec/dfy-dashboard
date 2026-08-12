@@ -5,6 +5,7 @@ import { VoortgangsChecklist, type ChecklistItem } from '@/components/portal/voo
 import { AirbnbFunnelNulmeting } from '@/components/portal/airbnb-funnel-nulmeting';
 import { VoortgangsTodos } from '@/components/portal/voortgangs-todos';
 import type { Todo } from '@/components/portal/todo-rij';
+import { VoortgangsActiviteitenlog, type ActiviteitenlogItem } from '@/components/portal/voortgangs-activiteitenlog';
 
 // Geen expliciet client_id-filter nodig op de queries hieronder: de "klant leest eigen ..."
 // RLS-policies scopen dit al af tot precies de data van de ingelogde klant. Dit klopt alleen
@@ -18,7 +19,7 @@ export default async function VoortgangPage() {
   const { data: profile } = await supabase.from('profiles').select('client_id').eq('id', user.id).maybeSingle();
   const clientId = profile?.client_id ?? '';
 
-  const [{ data: fasen }, { data: items }, { data: funnel }, { data: todos }] = await Promise.all([
+  const [{ data: fasen }, { data: items }, { data: funnel }, { data: todos }, { data: activiteiten }] = await Promise.all([
     supabase.from('voortgang_fasen').select('fase_nummer, percentage'),
     supabase.from('voortgang_checklist_items').select('id, fase_nummer, naam, afgevinkt'),
     supabase
@@ -28,6 +29,7 @@ export default async function VoortgangPage() {
       )
       .maybeSingle(),
     supabase.from('voortgang_todos').select('id, naam, deadline, afgevinkt'),
+    supabase.from('voortgang_activiteitenlog').select('id, datum, omschrijving'),
   ]);
 
   const fasenData: FaseVoortgang[] = (fasen ?? []).map((f) => ({
@@ -39,6 +41,11 @@ export default async function VoortgangPage() {
     faseNummer: i.fase_nummer as 1 | 2 | 3,
     naam: i.naam,
     afgevinkt: i.afgevinkt,
+  }));
+  const activiteitenData: ActiviteitenlogItem[] = (activiteiten ?? []).map((a) => ({
+    id: a.id,
+    datum: a.datum,
+    omschrijving: a.omschrijving,
   }));
 
   return (
@@ -68,6 +75,12 @@ export default async function VoortgangPage() {
         <h2 className="font-serif text-xl">To-do&apos;s</h2>
         <div className="mt-4">
           <VoortgangsTodos todos={(todos ?? []) as Todo[]} clientId={clientId} isAdmin={false} />
+        </div>
+      </div>
+      <div className="mt-10">
+        <h2 className="font-serif text-xl">Activiteitenlog</h2>
+        <div className="mt-4">
+          <VoortgangsActiviteitenlog items={activiteitenData} />
         </div>
       </div>
     </main>

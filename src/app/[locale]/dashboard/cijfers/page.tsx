@@ -4,7 +4,6 @@ import { berekenMaandVergelijkingen, berekenWowCijfer, vroegsteSamenwerkingGesta
 import { WowCijfer } from '@/components/dashboard/wow-cijfer';
 import { OmzetDashboard } from '@/components/dashboard/omzet-dashboard';
 import { ResultatenGrafiek } from '@/components/dashboard/resultaten-grafiek';
-import { ActielogTijdlijn } from '@/components/dashboard/actielog-tijdlijn';
 
 // Geen expliciet client_id-filter nodig op de listings-query hieronder: de
 // "klant leest eigen listings"-RLS-policy (client_id = current_client_id()) scopet dit
@@ -24,7 +23,7 @@ export default async function CijfersPage() {
 
   const { data: listings, error: listingsError } = await supabase
     .from('listings')
-    .select('samenwerking_gestart, nulmeting(jaar, maand, omzet), monthly_actuals(jaar, maand, omzet), action_log(id, datum, omschrijving)');
+    .select('samenwerking_gestart, nulmeting(jaar, maand, omzet), monthly_actuals(jaar, maand, omzet)');
   if (listingsError) console.error('Kon listings niet laden voor cijferpagina:', listingsError);
 
   const vergelijkingen = berekenMaandVergelijkingen(
@@ -36,7 +35,6 @@ export default async function CijfersPage() {
   );
   const wowCijfer = berekenWowCijfer(vergelijkingen);
   const startmaand = vroegsteSamenwerkingGestart((listings ?? []).map((listing) => listing.samenwerking_gestart));
-  const actielogItems = (listings ?? []).flatMap((listing) => listing.action_log ?? []);
 
   return (
     <main className="mx-auto max-w-5xl space-y-10 px-4 py-12">
@@ -45,7 +43,6 @@ export default async function CijfersPage() {
       <WowCijfer bedrag={wowCijfer} startmaand={startmaand} />
       <OmzetDashboard />
       <ResultatenGrafiek data={vergelijkingen} />
-      <ActielogTijdlijn items={actielogItems} />
     </main>
   );
 }
