@@ -714,3 +714,25 @@ export async function verwijderTodo(input: { clientId: string; todoId: string })
 
   revalidatePath(`/admin/klanten/${input.clientId}/voortgang`);
 }
+
+export async function voegActiviteitToe(input: {
+  clientId: string;
+  datum: string;
+  omschrijving: string;
+}) {
+  await assertIsAdmin();
+  if (!input.omschrijving.trim()) throw new Error('Omschrijving is verplicht.');
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { error } = await supabase.from('voortgang_activiteitenlog').insert({
+    client_id: input.clientId,
+    datum: input.datum,
+    omschrijving: input.omschrijving.trim(),
+    toegevoegd_door: user?.id,
+  });
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/admin/klanten/${input.clientId}/voortgang`);
+}
