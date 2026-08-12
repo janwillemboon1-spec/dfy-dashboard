@@ -82,40 +82,40 @@ export type Database = {
       airbnb_funnel_nulmeting: {
         Row: {
           bijgewerkt_op: string
-          client_id: string
           conversie_advertentie_naar_boeking: number | null
           conversie_zoekopdracht_naar_advertentie: number | null
           gemiddeld_conversiepercentage: number | null
           id: string
+          listing_id: string
           nulmeting_datum: string | null
           percentage_zoekvertoningen_eerste_pagina: number | null
         }
         Insert: {
           bijgewerkt_op?: string
-          client_id: string
           conversie_advertentie_naar_boeking?: number | null
           conversie_zoekopdracht_naar_advertentie?: number | null
           gemiddeld_conversiepercentage?: number | null
           id?: string
+          listing_id: string
           nulmeting_datum?: string | null
           percentage_zoekvertoningen_eerste_pagina?: number | null
         }
         Update: {
           bijgewerkt_op?: string
-          client_id?: string
           conversie_advertentie_naar_boeking?: number | null
           conversie_zoekopdracht_naar_advertentie?: number | null
           gemiddeld_conversiepercentage?: number | null
           id?: string
+          listing_id?: string
           nulmeting_datum?: string | null
           percentage_zoekvertoningen_eerste_pagina?: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "airbnb_funnel_nulmeting_client_id_fkey"
-            columns: ["client_id"]
+            foreignKeyName: "airbnb_funnel_nulmeting_listing_id_fkey"
+            columns: ["listing_id"]
             isOneToOne: true
-            referencedRelation: "clients"
+            referencedRelation: "listings"
             referencedColumns: ["id"]
           },
         ]
@@ -388,6 +388,7 @@ export type Database = {
           client_id: string
           datum: string
           id: string
+          listing_id: string | null
           omschrijving: string
           toegevoegd_door: string | null
         }
@@ -396,6 +397,7 @@ export type Database = {
           client_id: string
           datum: string
           id?: string
+          listing_id?: string | null
           omschrijving: string
           toegevoegd_door?: string | null
         }
@@ -404,6 +406,7 @@ export type Database = {
           client_id?: string
           datum?: string
           id?: string
+          listing_id?: string | null
           omschrijving?: string
           toegevoegd_door?: string | null
         }
@@ -413,6 +416,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voortgang_activiteitenlog_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
             referencedColumns: ["id"]
           },
           {
@@ -431,6 +441,7 @@ export type Database = {
           client_id: string
           fase_nummer: number
           id: string
+          listing_id: string | null
           naam: string
           toegevoegd_door: string | null
         }
@@ -440,6 +451,7 @@ export type Database = {
           client_id: string
           fase_nummer: number
           id?: string
+          listing_id?: string | null
           naam: string
           toegevoegd_door?: string | null
         }
@@ -449,6 +461,7 @@ export type Database = {
           client_id?: string
           fase_nummer?: number
           id?: string
+          listing_id?: string | null
           naam?: string
           toegevoegd_door?: string | null
         }
@@ -458,6 +471,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voortgang_checklist_items_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
             referencedColumns: ["id"]
           },
           {
@@ -508,6 +528,7 @@ export type Database = {
           client_id: string
           deadline: string
           id: string
+          listing_id: string | null
           naam: string
           toegevoegd_door: string | null
         }
@@ -517,6 +538,7 @@ export type Database = {
           client_id: string
           deadline: string
           id?: string
+          listing_id?: string | null
           naam: string
           toegevoegd_door?: string | null
         }
@@ -526,6 +548,7 @@ export type Database = {
           client_id?: string
           deadline?: string
           id?: string
+          listing_id?: string | null
           naam?: string
           toegevoegd_door?: string | null
         }
@@ -535,6 +558,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voortgang_todos_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
             referencedColumns: ["id"]
           },
           {
