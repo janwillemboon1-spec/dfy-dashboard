@@ -43,12 +43,16 @@ Geen `unique`-constraint nodig — meerdere items met dezelfde naam binnen één
 ### 1a. Standaard-checklist — automatisch voor elke klant
 
 De klant wil niet elke keer handmatig dezelfde items hoeven toevoegen. Daarom bevat dezelfde
-migratie ook een vaste standaardlijst van 20 items, ingedeeld op inhoud (de klant gaf de
-volledige lijst aan, inclusief een correctie op de eerste fase-indeling):
+migratie ook een vaste standaardlijst van 19 items, ingedeeld op inhoud (de klant gaf de
+volledige lijst aan, inclusief correcties op de eerste fase-indeling en een item dat niet
+standaard blijkt te zijn):
 
-**Fase 1 — Onboarding** (5): Koppeling met dynamic pricing software tot stand gebracht;
-Dashboard geactiveerd; Klant geïnformeerd; Live gegaan; Geautomatiseerd bericht instellen over
-voorbereiding bedden.
+**Fase 1 — Onboarding** (4): Koppeling met dynamic pricing software tot stand gebracht;
+Dashboard geactiveerd; Klant geïnformeerd; Live gegaan.
+
+("Geautomatiseerd bericht instellen over voorbereiding bedden" is bewust géén standaard-item —
+niet elke accommodatie heeft dit nodig; kan per klant handmatig worden toegevoegd via het
+toevoeg-formulier als het van toepassing is.)
 
 **Fase 2 — Marktanalyse & concurrentieanalyse** (4): Concurrentie analyse; Reviews
 geanalyseerd; Antwoordstrategie bepaald; Host profiel beoordeeld.
@@ -60,12 +64,12 @@ Seizoensprijzen ingesteld; Minimum nachten bepaald; Last-minute korting ingestel
 
 Deze standaardlijst wordt op twee manieren toegepast, beide in dezelfde migratie:
 
-1. **Backfill voor bestaande klanten**: een eenmalige `insert ... select` die de 20 items voor
+1. **Backfill voor bestaande klanten**: een eenmalige `insert ... select` die de 19 items voor
    elke rij die al in `clients` staat aanmaakt (cross join tussen `clients` en een
    `values`-lijst met de 20 (fase_nummer, naam)-paren).
 2. **Trigger voor nieuwe klanten**: een `after insert on clients`-trigger
    (`seed_standaard_checklist_items`, `security definer`, dezelfde 20-item-lijst) die
-   automatisch dezelfde 20 items aanmaakt zodra een nieuwe klant wordt aangemaakt — ongeacht
+   automatisch dezelfde 19 items aanmaakt zodra een nieuwe klant wordt aangemaakt — ongeacht
    via welke weg (het "nieuwe klant"-formulier, de CSV-import, enz.), omdat de trigger op
    tabelniveau zit i.p.v. in één specifieke server-actie.
 
@@ -138,8 +142,8 @@ aan.
 ## Testen
 
 - Handmatige verificatie van de backfill/trigger: na de migratie heeft een bestaande klant
-  meteen 20 items verdeeld over de 3 fasen (5/4/11); een nieuw aangemaakte klant (via het
-  "nieuwe klant"-formulier) krijgt dezelfde 20 items automatisch mee.
+  meteen 19 items verdeeld over de 3 fasen (4/4/11); een nieuw aangemaakte klant (via het
+  "nieuwe klant"-formulier) krijgt dezelfde 19 items automatisch mee.
 - Integratietest voor beide server-acties: weigert niet-admin, weigert een lege naam bij
   toevoegen, en — het belangrijkste — controleert dat het fase-percentage na toevoegen/afvinken
   correct herberekend wordt (bv. 2 items, 1 afgevinkt → 50%; een 3e nieuw item toevoegen →
