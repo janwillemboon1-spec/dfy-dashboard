@@ -175,4 +175,37 @@ describe('checklist en fase-percentage herberekening', () => {
       await admin.from('clients').delete().eq('id', percentageClientId);
     }
   });
+
+  it('herberekent het fase-percentage ook voor een item dat via de standaard-checklist-trigger is aangemaakt (niet via voegChecklistItemToe)', async () => {
+    // Regressietest voor een bug waarbij fase-percentages op 0% ("nog niet gestart")
+    // bleven staan na het afvinken van checklist-items: de bestaande tests hierboven
+    // vinken alleen items af die zelf via voegChecklistItemToe zijn aangemaakt, maar in
+    // de praktijk komen bijna alle items van de automatische standaard-checklist-trigger
+    // (clients_seed_standaard_checklist) op nieuwe klanten — dat pad was ongetest.
+    activeCookieStore = await loginAlsCookieStore(adminEmail, wachtwoord);
+
+    const { data: fase1Items } = await admin
+      .from('voortgang_checklist_items')
+      .select('id')
+      .eq('client_id', clientId)
+      .eq('fase_nummer', 1);
+    expect(fase1Items!.length).toBeGreaterThan(0);
+    const totaalFase1 = fase1Items!.length;
+    const triggerItemId = fase1Items![0].id;
+
+    await vinkChecklistItemAf({
+      clientId,
+      itemId: triggerItemId,
+      faseNummer: 1,
+      afgevinkt: true,
+    });
+
+    const { data: fase } = await admin
+      .from('voortgang_fasen')
+      .select('percentage')
+      .eq('client_id', clientId)
+      .eq('fase_nummer', 1)
+      .single();
+    expect(fase!.percentage).toBe(Math.round((1 / totaalFase1) * 100));
+  });
 });

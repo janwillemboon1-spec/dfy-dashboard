@@ -546,12 +546,16 @@ async function herberekenFasePercentage(
   const afgevinkt = items?.filter((i) => i.afgevinkt).length ?? 0;
   const percentage = totaal > 0 ? Math.round((afgevinkt / totaal) * 100) : 0;
 
-  await supabase
+  const { error } = await supabase
     .from('voortgang_fasen')
     .upsert(
       { client_id: clientId, fase_nummer: faseNummer, percentage },
       { onConflict: 'client_id,fase_nummer' }
     );
+  // Zonder deze check faalde deze upsert eerder stilzwijgend: het checklist-item bleef
+  // wél afgevinkt (die update wordt apart gecontroleerd door de caller), maar het
+  // fase-percentage bleef onopgemerkt op de oude waarde staan.
+  if (error) throw new Error(error.message);
 }
 
 export async function voegChecklistItemToe(input: {
