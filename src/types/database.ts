@@ -341,6 +341,38 @@ export type Database = {
           },
         ]
       }
+      voortgang_fasen: {
+        Row: {
+          bijgewerkt_op: string
+          client_id: string
+          fase_nummer: number
+          id: string
+          percentage: number
+        }
+        Insert: {
+          bijgewerkt_op?: string
+          client_id: string
+          fase_nummer: number
+          id?: string
+          percentage?: number
+        }
+        Update: {
+          bijgewerkt_op?: string
+          client_id?: string
+          fase_nummer?: number
+          id?: string
+          percentage?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voortgang_fasen_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
