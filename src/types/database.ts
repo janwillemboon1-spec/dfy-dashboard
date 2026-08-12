@@ -459,6 +459,51 @@ export type Database = {
           },
         ]
       }
+      voortgang_todos: {
+        Row: {
+          aangemaakt_op: string
+          afgevinkt: boolean
+          client_id: string
+          deadline: string
+          id: string
+          naam: string
+          toegevoegd_door: string | null
+        }
+        Insert: {
+          aangemaakt_op?: string
+          afgevinkt?: boolean
+          client_id: string
+          deadline: string
+          id?: string
+          naam: string
+          toegevoegd_door?: string | null
+        }
+        Update: {
+          aangemaakt_op?: string
+          afgevinkt?: boolean
+          client_id?: string
+          deadline?: string
+          id?: string
+          naam?: string
+          toegevoegd_door?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voortgang_todos_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voortgang_todos_toegevoegd_door_fkey"
+            columns: ["toegevoegd_door"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
