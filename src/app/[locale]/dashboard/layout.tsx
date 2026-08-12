@@ -1,18 +1,48 @@
+import { redirect } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { SignOutButton } from '@/components/sign-out-button';
+import { PortaalSidebar } from '@/components/portal/portaal-sidebar';
 
-// Geen eigen auth-check hier: dashboard/page.tsx doet die zelf al (redirect naar
-// /login zonder sessie, redirect naar /admin/klanten voor een admin-rol) — een layout
-// rendert samen met de pagina, dus die redirect voorkomt al dat dit header-omhulsel
-// ooit zichtbaar wordt zonder geldige klant-sessie.
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+// De auth/rol-check (voorheen in page.tsx) staat nu hier, centraal voor alle
+// klant-portaalpagina's (cijfers/voortgang/instellingen) — zelfde patroon als
+// admin/layout.tsx al gebruikt. Faalt dicht i.p.v. open: als de rol niet betrouwbaar
+// vastgesteld kan worden (query-fout), NIET stilzwijgend doorgaan alsof het een klant is
+// — dat zou een admin-sessie hier laten binnenkomen en, via de RLS-scoping in de
+// onderliggende pagina's, een opgeteld mengelmoes van alle klanten laten zien.
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle();
+  if (profileError) {
+    console.error('Kon profiel niet laden voor dashboard:', profileError);
+    redirect('/login');
+  }
+  if (profile?.role === 'admin') redirect('/admin/klanten');
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border px-4 py-3 flex items-center justify-end gap-1">
         <ThemeToggle />
         <SignOutButton />
       </header>
-      {children}
+      <div className="flex">
+        <PortaalSidebar
+          titel="Boon Vakantieverhuur"
+          items={[
+            { label: 'Voortgang', href: '/dashboard/voortgang' },
+            { label: 'Cijfers', href: '/dashboard/cijfers' },
+            { label: 'Instellingen', href: '/dashboard/instellingen' },
+          ]}
+        />
+        <div className="flex-1">{children}</div>
+      </div>
     </div>
   );
 }
