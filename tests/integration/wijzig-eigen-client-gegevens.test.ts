@@ -77,14 +77,23 @@ describe('wijzigEigenClientGegevens', () => {
     expect(resultaat.fout).toBe('Naam is verplicht.');
   });
 
-  it('wijzigt de naam en het telefoonnummer van de eigen client', async () => {
+  it('wijzigt de naam en het telefoonnummer van de eigen client, zonder email/status aan te raken', async () => {
     activeCookieStore = await loginAlsCookieStore(klantEmail, wachtwoord);
     const resultaat = await wijzigEigenClientGegevens({ naam: 'Nieuwe Naam', telefoon: '0622222222' });
     expect(resultaat.succes).toBe(true);
 
-    const { data: clientNa } = await admin.from('clients').select('naam, telefoon').eq('id', clientId).single();
+    const { data: clientNa } = await admin
+      .from('clients')
+      .select('naam, telefoon, email, status')
+      .eq('id', clientId)
+      .single();
     expect(clientNa!.naam).toBe('Nieuwe Naam');
     expect(clientNa!.telefoon).toBe('0622222222');
+    // Beschermt tegen een toekomstige regressie (bv. een onbedachtzame ...input-spread in
+    // de update-payload) die email/status zou meesturen — RLS staat de hele rij toe, dus
+    // deze twee velden worden uitsluitend door de server-actie zelf buiten schot gehouden.
+    expect(clientNa!.email).toBe(klantEmail);
+    expect(clientNa!.status).toBe('onboarding');
   });
 
   it('staat een leeg telefoonnummer toe (optioneel veld)', async () => {
