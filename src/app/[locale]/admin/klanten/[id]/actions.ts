@@ -1,5 +1,7 @@
 'use server';
 
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/database';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { assertIsAdmin } from '@/lib/auth/assert-admin';
@@ -525,5 +527,70 @@ export async function werkFaseVoortgangBij(input: {
     );
   if (error) throw new Error(error.message);
 
+  revalidatePath(`/admin/klanten/${input.clientId}/voortgang`);
+}
+
+async function herberekenFasePercentage(
+  supabase: SupabaseClient<Database>,
+  clientId: string,
+  faseNummer: number
+) {
+  const { data: items } = await supabase
+    .from('voortgang_checklist_items')
+    .select('afgevinkt')
+    .eq('client_id', clientId)
+    .eq('fase_nummer', faseNummer);
+
+  const totaal = items?.length ?? 0;
+  const afgevinkt = items?.filter((i) => i.afgevinkt).length ?? 0;
+  const percentage = totaal > 0 ? Math.round((afgevinkt / totaal) * 100) : 0;
+
+  await supabase
+    .from('voortgang_fasen')
+    .upsert(
+      { client_id: clientId, fase_nummer: faseNummer, percentage },
+      { onConflict: 'client_id,fase_nummer' }
+    );
+}
+
+export async function voegChecklistItemToe(input: {
+  clientId: string;
+  faseNummer: 1 | 2 | 3;
+  naam: string;
+}) {
+  await assertIsAdmin();
+  if (!input.naam.trim()) throw new Error('Naam is verplicht.');
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { error } = await supabase.from('voortgang_checklist_items').insert({
+    client_id: input.clientId,
+    fase_nummer: input.faseNummer,
+    naam: input.naam.trim(),
+    toegevoegd_door: user?.id,
+  });
+  if (error) throw new Error(error.message);
+
+  await herberekenFasePercentage(supabase, input.clientId, input.faseNummer);
+  revalidatePath(`/admin/klanten/${input.clientId}/voortgang`);
+}
+
+export async function vinkChecklistItemAf(input: {
+  clientId: string;
+  itemId: string;
+  faseNummer: 1 | 2 | 3;
+  afgevinkt: boolean;
+}) {
+  await assertIsAdmin();
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from('voortgang_checklist_items')
+    .update({ afgevinkt: input.afgevinkt })
+    .eq('id', input.itemId);
+  if (error) throw new Error(error.message);
+
+  await herberekenFasePercentage(supabase, input.clientId, input.faseNummer);
   revalidatePath(`/admin/klanten/${input.clientId}/voortgang`);
 }
