@@ -6,7 +6,8 @@ import { WachtwoordFormulier } from '@/components/dashboard/wachtwoord-formulier
 // Geen expliciet client_id-filter nodig op de query hieronder: de "klant leest eigen
 // client"-RLS-policy (id = current_client_id()) scopet dit al af tot precies de klant van de
 // ingelogde gebruiker. Dit klopt alleen voor een klant-sessie — dashboard/layout.tsx redirect
-// een admin-sessie al weg vóórdat deze pagina rendert.
+// een admin-sessie al weg vóórdat deze pagina rendert. (Het wachtwoord-wijzigen hieronder
+// loopt via Supabase Auth, niet via deze RLS-policy — zie wijzigEigenWachtwoord.)
 export default async function InstellingenPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
