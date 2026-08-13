@@ -43,6 +43,7 @@ export function WachtwoordFormulier() {
         <Input
           id="wachtwoord-huidig"
           type="password"
+          autoComplete="current-password"
           value={huidigWachtwoord}
           onChange={(e) => setHuidigWachtwoord(e.target.value)}
         />
@@ -52,6 +53,7 @@ export function WachtwoordFormulier() {
         <Input
           id="wachtwoord-nieuw"
           type="password"
+          autoComplete="new-password"
           value={nieuwWachtwoord}
           onChange={(e) => setNieuwWachtwoord(e.target.value)}
         />
@@ -61,6 +63,7 @@ export function WachtwoordFormulier() {
         <Input
           id="wachtwoord-bevestiging"
           type="password"
+          autoComplete="new-password"
           value={bevestiging}
           onChange={(e) => setBevestiging(e.target.value)}
         />
