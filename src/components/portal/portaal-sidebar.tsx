@@ -92,7 +92,7 @@ export function PortaalSidebar({
           (Link's eigen navigatie sluit de Dialog niet vanzelf). */}
       <div className="md:hidden flex items-center gap-2 border-b border-border px-4 py-3">
         <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
-          <DialogPrimitive.Trigger render={<Button variant="ghost" size="icon-lg" />}>
+          <DialogPrimitive.Trigger render={<Button variant="ghost" size="icon" />}>
             <MenuIcon />
             <span className="sr-only">Menu openen</span>
           </DialogPrimitive.Trigger>
@@ -115,7 +115,7 @@ export function PortaalSidebar({
                   </DialogPrimitive.Title>
                   {subtitel && <p className="text-xs text-muted-foreground">{subtitel}</p>}
                 </div>
-                <DialogPrimitive.Close render={<Button variant="ghost" size="icon-lg" />}>
+                <DialogPrimitive.Close render={<Button variant="ghost" size="icon" />}>
                   <XIcon />
                   <span className="sr-only">Menu sluiten</span>
                 </DialogPrimitive.Close>
