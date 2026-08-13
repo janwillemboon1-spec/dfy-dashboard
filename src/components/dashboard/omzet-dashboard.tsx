@@ -186,12 +186,12 @@ export function OmzetDashboard({ clientId, geselecteerdeWoning }: { clientId?: s
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex gap-1 border-b border-border">
+        <div className="flex gap-1 overflow-x-auto border-b border-border">
           {PERIODES.map((p) => (
             <button
               key={p.id}
               onClick={() => kiesPeriode(p.id)}
-              className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${periodeId === p.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'}`}
+              className={`px-3 py-2 text-sm font-medium whitespace-nowrap border-b-2 -mb-px ${periodeId === p.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'}`}
             >
               {p.label}
             </button>
