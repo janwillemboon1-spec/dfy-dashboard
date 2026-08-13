@@ -20,7 +20,7 @@ export default async function KlantPortaalLayout({
   if (!klant) notFound();
 
   return (
-    <div className="flex">
+    <div className="flex flex-col md:flex-row">
       <PortaalSidebar
         titel={klant.naam}
         subtitel="Klantportaal"

@@ -32,7 +32,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <ThemeToggle />
         <SignOutButton />
       </header>
-      <div className="flex">
+      <div className="flex flex-col md:flex-row">
         <PortaalSidebar
           titel="Boon Vakantieverhuur"
           items={[
