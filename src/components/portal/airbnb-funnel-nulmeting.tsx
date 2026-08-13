@@ -29,11 +29,15 @@ function formatteerDatum(datum: string): string {
 
 export function AirbnbFunnelNulmeting({
   clientId,
+  listingId,
+  listingNaam,
   waarden,
   nulmetingDatum,
   magBewerken,
 }: {
   clientId: string;
+  listingId: string;
+  listingNaam: string;
   waarden: AirbnbFunnelWaarden;
   nulmetingDatum: string | null;
   magBewerken: boolean;
@@ -43,10 +47,12 @@ export function AirbnbFunnelNulmeting({
   const [foutmelding, setFoutmelding] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  const titel = listingNaam ? `Nulmeting Airbnb funnel — ${listingNaam}` : 'Nulmeting Airbnb funnel';
+
   if (!magBewerken) {
     return (
       <div className="mt-6">
-        <h3 className="mb-2 text-sm font-medium">Nulmeting Airbnb funnel</h3>
+        <h3 className="mb-2 text-sm font-medium">{titel}</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {VELDEN.map((veld) => (
             <div key={veld.sleutel} className="bg-card border border-border rounded-xl p-4">
@@ -68,7 +74,7 @@ export function AirbnbFunnelNulmeting({
     setFoutmelding(null);
     startTransition(async () => {
       try {
-        await werkAirbnbFunnelNulmetingBij({ clientId, ...invoer, nulmetingDatum: datum || null });
+        await werkAirbnbFunnelNulmetingBij({ clientId, listingId, ...invoer, nulmetingDatum: datum || null });
       } catch (error) {
         setFoutmelding((error as Error).message);
       }
@@ -77,16 +83,16 @@ export function AirbnbFunnelNulmeting({
 
   return (
     <div className="mt-6 space-y-3">
-      <h3 className="text-sm font-medium">Nulmeting Airbnb funnel</h3>
+      <h3 className="text-sm font-medium">{titel}</h3>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {VELDEN.map((veld) => (
           <div key={veld.sleutel} className="bg-card border border-border rounded-xl p-4">
-            <label htmlFor={`funnel-${veld.sleutel}-${clientId}`} className="block text-xs text-muted-foreground mb-1">
+            <label htmlFor={`funnel-${veld.sleutel}-${listingId}`} className="block text-xs text-muted-foreground mb-1">
               {veld.label}
             </label>
             <div className="flex items-center gap-1">
               <Input
-                id={`funnel-${veld.sleutel}-${clientId}`}
+                id={`funnel-${veld.sleutel}-${listingId}`}
                 type="number"
                 min={0}
                 max={100}
@@ -106,11 +112,11 @@ export function AirbnbFunnelNulmeting({
         ))}
       </div>
       <div>
-        <label htmlFor={`funnel-datum-${clientId}`} className="block text-xs text-muted-foreground mb-1">
+        <label htmlFor={`funnel-datum-${listingId}`} className="block text-xs text-muted-foreground mb-1">
           Datum van de meting
         </label>
         <Input
-          id={`funnel-datum-${clientId}`}
+          id={`funnel-datum-${listingId}`}
           type="date"
           value={datum}
           onChange={(e) => setDatum(e.target.value)}
