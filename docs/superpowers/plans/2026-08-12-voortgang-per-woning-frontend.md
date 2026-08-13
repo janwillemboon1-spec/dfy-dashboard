@@ -883,6 +883,10 @@ export function VoortgangInhoud({
         : activiteiten.filter((a) => a.listingId === null || a.listingId === geselecteerdeWoning),
     [activiteiten, geselecteerdeWoning]
   );
+  // Geen `|| f.listingId === null`-tak zoals bij de drie filters hierboven: een
+  // funnel-rij heeft altijd een specifieke woning (listing_id is verplicht in de
+  // database), er bestaat geen "algemene" funnel-rij die bij elke woning-filter
+  // zichtbaar zou moeten blijven.
   const gefilterdeFunnels =
     geselecteerdeWoning === null ? funnels : funnels.filter((f) => f.listingId === geselecteerdeWoning);
 
