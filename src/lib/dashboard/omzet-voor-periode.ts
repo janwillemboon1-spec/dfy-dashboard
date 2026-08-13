@@ -23,14 +23,23 @@ export interface OmzetVoorPeriodeListing {
   nulmeting: NulmetingRij[];
 }
 
+export interface TrendPunt {
+  maand: string;
+  omzet: number;
+  omzetStly: number;
+  omzetNulmeting: number | null;
+}
+
 export interface OmzetData {
   periode: { start: string; eind: string; stlyStart: string; stlyEind: string };
   periodeType: 'vast' | 'eigen';
   portfolio: OmzetMetrics;
   portfolioStly: OmzetMetrics;
   portfolioNulmeting: OmzetMetrics | null;
-  listings: Array<OmzetMetrics & { listing_id: string; listing_naam: string; stly: OmzetMetrics; nulmeting: OmzetMetrics | null }>;
-  trend: Array<{ maand: string; omzet: number; omzetStly: number; omzetNulmeting: number | null }>;
+  listings: Array<
+    OmzetMetrics & { listing_id: string; listing_naam: string; stly: OmzetMetrics; nulmeting: OmzetMetrics | null; trend: TrendPunt[] }
+  >;
+  trend: TrendPunt[];
 }
 
 export function berekenOmzetVoorPeriode({
@@ -76,19 +85,6 @@ export function berekenOmzetVoorPeriode({
   const perListingHuidig = groepeerPerListing(huidigeRijen);
   const perListingStly = groepeerPerListing(stlyRijen);
 
-  const listingsUitkomst = listings.map((l) => {
-    const metrics = aggregeer(perListingHuidig[l.id] ?? [], start, eindExclusief, dagen);
-    const stlyMetrics = aggregeer(perListingStly[l.id] ?? [], stlyStart, stlyEindExclusief, stlyDagen);
-    const nulmetingMetrics = periodeType === 'vast' ? nulmetingAlsMetrics(l.nulmeting ?? [], start, eind) : null;
-    return {
-      listing_id: l.id,
-      listing_naam: l.naam,
-      ...metrics,
-      stly: stlyMetrics,
-      nulmeting: nulmetingMetrics,
-    };
-  }).sort((a, b) => b.omzet - a.omzet);
-
   const trendMaanden: string[] = [];
   const cursor = new Date(`${start}T00:00:00Z`);
   const eindMaand = eind.slice(0, 7);
@@ -108,25 +104,47 @@ export function berekenOmzetVoorPeriode({
     };
   }
 
-  // Hergebruikt de al overlap-gefetchte huidigeRijen/stlyRijen (i.p.v. per maand vooraf te
-  // bucketen): aggregeer() filtert zelf al op overlap met [maandStart, maandEind), dus een
-  // reservering die een maandgrens overschrijdt telt vanzelf naar rato mee in beide maanden.
-  const trend = trendMaanden.map((maand) => {
-    const stlyMaand = shiftJaar(`${maand}-01`, -1).slice(0, 7);
-    const [, maandNummerStr] = maand.split('-');
-    const maandNummer = Number(maandNummerStr);
-    const omzetNulmeting = periodeType === 'vast'
-      ? alleNulmeting.filter((r) => r.maand === maandNummer).reduce((s, r) => s + r.omzet, 0)
-      : null;
-    const { start: maandStart, eind: maandEind } = maandGrenzen(maand);
-    const { start: stlyMaandStart, eind: stlyMaandEind } = maandGrenzen(stlyMaand);
+  // Hergebruikt door zowel de portfolio-trend als de per-woning trend hieronder — telkens
+  // met een andere (al overlap-gefetchte) subset van dezelfde rijen, zodat een reservering
+  // die een maandgrens overschrijdt vanzelf naar rato meetelt in beide maanden, exact zoals
+  // de (voorheen alleen portfolio-brede) trend dat al deed vóór deze functie werd
+  // uitgesplitst in een herbruikbare helper.
+  function berekenTrend(rijen: CacheReservering[], stlyRijenVoorTrend: CacheReservering[], nulmetingRijen: NulmetingRij[]): TrendPunt[] {
+    return trendMaanden.map((maand) => {
+      const stlyMaand = shiftJaar(`${maand}-01`, -1).slice(0, 7);
+      const [, maandNummerStr] = maand.split('-');
+      const maandNummer = Number(maandNummerStr);
+      const omzetNulmeting = periodeType === 'vast'
+        ? nulmetingRijen.filter((r) => r.maand === maandNummer).reduce((s, r) => s + r.omzet, 0)
+        : null;
+      const { start: maandStart, eind: maandEind } = maandGrenzen(maand);
+      const { start: stlyMaandStart, eind: stlyMaandEind } = maandGrenzen(stlyMaand);
+      return {
+        maand,
+        omzet: aggregeer(rijen, maandStart, maandEind, 30).omzet,
+        omzetStly: aggregeer(stlyRijenVoorTrend, stlyMaandStart, stlyMaandEind, 30).omzet,
+        omzetNulmeting,
+      };
+    });
+  }
+
+  const listingsUitkomst = listings.map((l) => {
+    const eigenHuidigeRijen = perListingHuidig[l.id] ?? [];
+    const eigenStlyRijen = perListingStly[l.id] ?? [];
+    const metrics = aggregeer(eigenHuidigeRijen, start, eindExclusief, dagen);
+    const stlyMetrics = aggregeer(eigenStlyRijen, stlyStart, stlyEindExclusief, stlyDagen);
+    const nulmetingMetrics = periodeType === 'vast' ? nulmetingAlsMetrics(l.nulmeting ?? [], start, eind) : null;
     return {
-      maand,
-      omzet: aggregeer(huidigeRijen, maandStart, maandEind, 30).omzet,
-      omzetStly: aggregeer(stlyRijen, stlyMaandStart, stlyMaandEind, 30).omzet,
-      omzetNulmeting,
+      listing_id: l.id,
+      listing_naam: l.naam,
+      ...metrics,
+      stly: stlyMetrics,
+      nulmeting: nulmetingMetrics,
+      trend: berekenTrend(eigenHuidigeRijen, eigenStlyRijen, l.nulmeting ?? []),
     };
-  });
+  }).sort((a, b) => b.omzet - a.omzet);
+
+  const trend = berekenTrend(huidigeRijen, stlyRijen, alleNulmeting);
 
   return {
     periode: { start, eind, stlyStart, stlyEind },
