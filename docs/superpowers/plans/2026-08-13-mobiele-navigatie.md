@@ -136,7 +136,9 @@ export function PortaalSidebar({
                       ← {terug.label}
                     </Link>
                   )}
-                  <p className="font-serif text-lg">{titel}</p>
+                  <DialogPrimitive.Title render={<p className="font-serif text-lg" />}>
+                    {titel}
+                  </DialogPrimitive.Title>
                   {subtitel && <p className="text-xs text-muted-foreground">{subtitel}</p>}
                 </div>
                 <DialogPrimitive.Close render={<Button variant="ghost" size="icon-lg" />}>
