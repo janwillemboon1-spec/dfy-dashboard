@@ -27,35 +27,37 @@ export function NulmetingTabel({
   const gesorteerd = [...rijen].sort((a, b) => a.jaar - b.jaar || a.maand - b.maand);
 
   return (
-    <table className="w-full text-sm">
-      <thead>
-        <tr className="text-left text-muted-foreground">
-          <th>Maand</th><th>Omzet</th><th>Bezetting</th><th />
-        </tr>
-      </thead>
-      <tbody>
-        {gesorteerd.map((rij) =>
-          bewerkId === rij.id ? (
-            <CorrectieRij
-              key={rij.id}
-              rij={rij}
-              listingId={listingId}
-              clientId={clientId}
-              onKlaar={() => setBewerkId(null)}
-            />
-          ) : (
-            <tr key={rij.id}>
-              <td>{MAAND_NAMEN_KORT[rij.maand - 1]} {rij.jaar}</td>
-              <td>€ {rij.omzet.toLocaleString('nl-NL', { maximumFractionDigits: 0 })}</td>
-              <td>{rij.bezetting}%</td>
-              <td>
-                <Button variant="ghost" size="sm" onClick={() => setBewerkId(rij.id)}>Corrigeren</Button>
-              </td>
-            </tr>
-          )
-        )}
-      </tbody>
-    </table>
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-left text-muted-foreground">
+            <th>Maand</th><th>Omzet</th><th>Bezetting</th><th />
+          </tr>
+        </thead>
+        <tbody>
+          {gesorteerd.map((rij) =>
+            bewerkId === rij.id ? (
+              <CorrectieRij
+                key={rij.id}
+                rij={rij}
+                listingId={listingId}
+                clientId={clientId}
+                onKlaar={() => setBewerkId(null)}
+              />
+            ) : (
+              <tr key={rij.id}>
+                <td>{MAAND_NAMEN_KORT[rij.maand - 1]} {rij.jaar}</td>
+                <td>€ {rij.omzet.toLocaleString('nl-NL', { maximumFractionDigits: 0 })}</td>
+                <td>{rij.bezetting}%</td>
+                <td>
+                  <Button variant="ghost" size="sm" onClick={() => setBewerkId(rij.id)}>Corrigeren</Button>
+                </td>
+              </tr>
+            )
+          )}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

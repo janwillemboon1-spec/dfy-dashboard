@@ -28,31 +28,33 @@ export default async function KlantenPage() {
       ) : klanten && klanten.length === 0 ? (
         <p className="text-sm text-muted-foreground">Nog geen klanten. Voeg je eerste klant toe.</p>
       ) : (
-        <table className="w-full text-sm">
-          <caption className="sr-only">Overzicht van alle klanten</caption>
-          <thead>
-            <tr className="border-b border-border text-left text-muted-foreground">
-              <th scope="col" className="py-2">Naam</th>
-              <th scope="col">E-mail</th>
-              <th scope="col">Status</th>
-              <th scope="col">Accommodaties</th>
-              <th scope="col">Aangemaakt</th>
-            </tr>
-          </thead>
-          <tbody>
-            {klanten?.map((klant) => (
-              <tr key={klant.id} className="border-b border-border/50">
-                <td className="py-2">
-                  <Link href={`/admin/klanten/${klant.id}/instellingen`} className="hover:underline">{klant.naam}</Link>
-                </td>
-                <td>{klant.email}</td>
-                <td>{klant.status}</td>
-                <td>{klant.listings?.[0]?.count ?? 0}</td>
-                <td>{new Date(klant.aangemaakt_op).toLocaleDateString('nl-NL')}</td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <caption className="sr-only">Overzicht van alle klanten</caption>
+            <thead>
+              <tr className="border-b border-border text-left text-muted-foreground">
+                <th scope="col" className="py-2">Naam</th>
+                <th scope="col">E-mail</th>
+                <th scope="col">Status</th>
+                <th scope="col">Accommodaties</th>
+                <th scope="col">Aangemaakt</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {klanten?.map((klant) => (
+                <tr key={klant.id} className="border-b border-border/50">
+                  <td className="py-2">
+                    <Link href={`/admin/klanten/${klant.id}/instellingen`} className="hover:underline">{klant.naam}</Link>
+                  </td>
+                  <td>{klant.email}</td>
+                  <td>{klant.status}</td>
+                  <td>{klant.listings?.[0]?.count ?? 0}</td>
+                  <td>{new Date(klant.aangemaakt_op).toLocaleDateString('nl-NL')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </main>
   );

@@ -40,28 +40,30 @@ export function ResultatenTabel({
   const venster = twaalfMaandenVenster();
 
   return (
-    <table className="w-full text-sm">
-      <thead>
-        <tr className="text-left text-muted-foreground">
-          <th>Maand</th>
-          <th>Omzet</th>
-          <th>Bezetting</th>
-        </tr>
-      </thead>
-      <tbody>
-        {venster.map(({ jaar, maand }) => {
-          const rij = actueelPerMaand.get(`${jaar}-${maand}`);
-          return (
-            <tr key={`${jaar}-${maand}`}>
-              <td>
-                {MAAND_NAMEN_KORT[maand - 1]} {jaar}
-              </td>
-              <td>{rij ? `€ ${rij.omzet.toLocaleString('nl-NL', { maximumFractionDigits: 0 })}` : '—'}</td>
-              <td>{rij ? `${rij.bezetting}%` : '—'}</td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-left text-muted-foreground">
+            <th>Maand</th>
+            <th>Omzet</th>
+            <th>Bezetting</th>
+          </tr>
+        </thead>
+        <tbody>
+          {venster.map(({ jaar, maand }) => {
+            const rij = actueelPerMaand.get(`${jaar}-${maand}`);
+            return (
+              <tr key={`${jaar}-${maand}`}>
+                <td>
+                  {MAAND_NAMEN_KORT[maand - 1]} {jaar}
+                </td>
+                <td>{rij ? `€ ${rij.omzet.toLocaleString('nl-NL', { maximumFractionDigits: 0 })}` : '—'}</td>
+                <td>{rij ? `${rij.bezetting}%` : '—'}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }

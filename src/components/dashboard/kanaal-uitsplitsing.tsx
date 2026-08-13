@@ -30,7 +30,7 @@ export function KanaalUitsplitsing({ kanalen }: { kanalen: Record<string, { omze
 
   return (
     <div className="flex gap-4 items-stretch flex-col lg:flex-row">
-      <div className="flex-1 bg-card border border-border rounded-xl overflow-hidden min-w-0">
+      <div className="flex-1 bg-card border border-border rounded-xl overflow-x-auto min-w-0">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-muted text-xs text-muted-foreground uppercase">
