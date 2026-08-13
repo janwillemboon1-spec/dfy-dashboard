@@ -6,6 +6,8 @@ import {
   type ListingData,
 } from '@/lib/dashboard/bereken-resultaten';
 
+const NU = new Date('2026-08-13T00:00:00Z');
+
 describe('berekenMaandVergelijkingen', () => {
   it('matcht een actuele maand met de nulmeting-rij van hetzelfde maandnummer, ongeacht jaar', () => {
     const listings: ListingData[] = [
@@ -15,7 +17,7 @@ describe('berekenMaandVergelijkingen', () => {
         samenwerkingGestart: null,
       },
     ];
-    const resultaat = berekenMaandVergelijkingen(listings);
+    const resultaat = berekenMaandVergelijkingen(listings, NU);
     expect(resultaat).toEqual([{ jaar: 2026, maand: 8, nulmetingOmzet: 1000, actueelOmzet: 1500 }]);
   });
 
@@ -32,7 +34,7 @@ describe('berekenMaandVergelijkingen', () => {
         samenwerkingGestart: null,
       },
     ];
-    const resultaat = berekenMaandVergelijkingen(listings);
+    const resultaat = berekenMaandVergelijkingen(listings, NU);
     expect(resultaat).toEqual([{ jaar: 2026, maand: 8, nulmetingOmzet: 1800, actueelOmzet: 2400 }]);
   });
 
@@ -44,7 +46,7 @@ describe('berekenMaandVergelijkingen', () => {
         samenwerkingGestart: null,
       },
     ];
-    expect(berekenMaandVergelijkingen(listings)).toEqual([]);
+    expect(berekenMaandVergelijkingen(listings, NU)).toEqual([]);
   });
 
   it('sorteert chronologisch oplopend', () => {
@@ -61,7 +63,9 @@ describe('berekenMaandVergelijkingen', () => {
         samenwerkingGestart: null,
       },
     ];
-    const resultaat = berekenMaandVergelijkingen(listings);
+    // Eigen, latere nu: deze test gaat over sorteervolgorde, niet over de
+    // toekomstige-maand-uitsluiting hieronder — december 2026 moet hier dus gewoon meetellen.
+    const resultaat = berekenMaandVergelijkingen(listings, new Date('2027-01-01T00:00:00Z'));
     expect(resultaat.map((r) => `${r.jaar}-${r.maand}`)).toEqual(['2025-1', '2026-12']);
   });
 
@@ -79,7 +83,7 @@ describe('berekenMaandVergelijkingen', () => {
         samenwerkingGestart: '2026-03-15',
       },
     ];
-    const resultaat = berekenMaandVergelijkingen(listings);
+    const resultaat = berekenMaandVergelijkingen(listings, NU);
     // Februari 2026 valt vóór de startmaand (maart) en telt niet mee; maart zelf (de
     // startmaand zelf) telt wél mee — "vanaf" is inclusief.
     expect(resultaat).toEqual([{ jaar: 2026, maand: 3, nulmetingOmzet: 100, actueelOmzet: 600 }]);
@@ -93,7 +97,7 @@ describe('berekenMaandVergelijkingen', () => {
         samenwerkingGestart: null,
       },
     ];
-    const resultaat = berekenMaandVergelijkingen(listings);
+    const resultaat = berekenMaandVergelijkingen(listings, NU);
     expect(resultaat).toEqual([{ jaar: 2020, maand: 1, nulmetingOmzet: 100, actueelOmzet: 500 }]);
   });
 
@@ -119,11 +123,31 @@ describe('berekenMaandVergelijkingen', () => {
         samenwerkingGestart: '2026-06-01',
       },
     ];
-    const resultaat = berekenMaandVergelijkingen(listings);
+    const resultaat = berekenMaandVergelijkingen(listings, NU);
     expect(resultaat).toEqual([
       { jaar: 2026, maand: 1, nulmetingOmzet: 100, actueelOmzet: 500 },
       { jaar: 2026, maand: 6, nulmetingOmzet: 300, actueelOmzet: 800 },
     ]);
+  });
+
+  it('sluit een maand ná de huidige maand uit, ook als daar via het glijdende syncvenster al (deel-)omzet voor bekend is', () => {
+    const listings: ListingData[] = [
+      {
+        nulmeting: [
+          { jaar: 2024, maand: 8, omzet: 1000 },
+          { jaar: 2024, maand: 9, omzet: 1000 },
+        ],
+        monthlyActuals: [
+          { jaar: 2026, maand: 8, omzet: 1500 },
+          // September 2026 ligt ná "nu" (13 augustus 2026) — al aanwezig door het
+          // vooruitkijkende cron-syncvenster, maar nog niet gerealiseerd.
+          { jaar: 2026, maand: 9, omzet: 300 },
+        ],
+        samenwerkingGestart: null,
+      },
+    ];
+    const resultaat = berekenMaandVergelijkingen(listings, NU);
+    expect(resultaat).toEqual([{ jaar: 2026, maand: 8, nulmetingOmzet: 1000, actueelOmzet: 1500 }]);
   });
 });
 

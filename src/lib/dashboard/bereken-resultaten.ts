@@ -27,7 +27,8 @@ export interface MaandVergelijking {
   actueelOmzet: number;
 }
 
-export function berekenMaandVergelijkingen(listings: ListingData[]): MaandVergelijking[] {
+export function berekenMaandVergelijkingen(listings: ListingData[], nu: Date = new Date()): MaandVergelijking[] {
+  const huidigeMaand = { jaar: nu.getUTCFullYear(), maand: nu.getUTCMonth() + 1 };
   const perMaand = new Map<string, MaandVergelijking>();
 
   for (const listing of listings) {
@@ -51,6 +52,22 @@ export function berekenMaandVergelijkingen(listings: ListingData[]): MaandVergel
       if (
         cutoff &&
         (actueleRij.jaar < cutoff.jaar || (actueleRij.jaar === cutoff.jaar && actueleRij.maand < cutoff.maand))
+      ) {
+        continue;
+      }
+
+      // monthly_actuals kan door het glijdende cron-synchronisatievenster (zie
+      // scripts/sync-pricelabs-cron.ts, dat welbewust t/m vólgende maand synchroniseert
+      // om laat gewijzigde/geannuleerde boekingen in de zojuist afgesloten maand te
+      // kunnen bijwerken) ook al een rij voor een nog niet aangebroken maand bevatten,
+      // met omzet van reserveringen die al ver vooruit geboekt zijn. Zo'n maand is nog
+      // niet "gerealiseerd" en telt niet mee: toekomstige boekingen liggen doorgaans
+      // (nog) lager dan de nulmeting van diezelfde maand — er is simpelweg nog minder
+      // tijd geweest om te boeken — wat het totaal ten onrechte negatief zou trekken en
+      // niet weerspiegelt hoeveel extra omzet er tot nu toe daadwerkelijk is gerealiseerd.
+      if (
+        actueleRij.jaar > huidigeMaand.jaar ||
+        (actueleRij.jaar === huidigeMaand.jaar && actueleRij.maand > huidigeMaand.maand)
       ) {
         continue;
       }
