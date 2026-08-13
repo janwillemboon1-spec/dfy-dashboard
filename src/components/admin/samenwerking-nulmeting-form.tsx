@@ -82,7 +82,7 @@ export function SamenwerkingNulmetingForm({
       <label htmlFor={`samenwerking-gestart-${listingId}`} className="block text-xs text-muted-foreground">
         Samenwerking gestart in
       </label>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Input
           id={`samenwerking-gestart-${listingId}`}
           type="month"

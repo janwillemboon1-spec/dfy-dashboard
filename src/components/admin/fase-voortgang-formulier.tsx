@@ -25,7 +25,7 @@ export function FaseVoortgangFormulier({ clientId }: { clientId: string }) {
 
   return (
     <div className="mt-6 space-y-2 rounded-md border border-border p-3 text-sm">
-      <div className="flex items-end gap-2">
+      <div className="flex flex-wrap items-end gap-2">
         <div>
           <label htmlFor={`fase-select-${clientId}`} className="block text-xs text-muted-foreground">
             Fase

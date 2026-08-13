@@ -34,7 +34,7 @@ export function PricelabsKoppeling({
 
   if (pricelabsListingId) {
     return (
-      <div className="flex items-center gap-2 text-sm">
+      <div className="flex flex-wrap items-center gap-2 text-sm">
         <span className="text-muted-foreground">Gekoppeld aan PriceLabs ({pricelabsListingId})</span>
         <Button
           variant="ghost"

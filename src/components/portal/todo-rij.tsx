@@ -121,7 +121,7 @@ function TodoBewerkRij({
   }
 
   return (
-    <div className="flex items-center gap-2 text-sm">
+    <div className="flex flex-wrap items-center gap-2 text-sm">
       <Input value={naam} onChange={(e) => setNaam(e.target.value)} className="flex-1" />
       <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} className="w-auto" />
       {listings.length > 1 && (
