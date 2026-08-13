@@ -4,7 +4,7 @@
 
 **Goal:** Raise the minimum tap-target height across the whole app to 36px (matching the size already used for the mobile-nav hamburger/close buttons), and make the klant-portal to-do checkbox's whole label tappable, not just the ~15px native box — deelproject 3/3 of the mobile-compatibility audit.
 
-**Architecture:** A single CSS-only change to the shared `Button` component's size scale (`src/components/ui/button.tsx`) — every existing `size="sm"`/`size="icon-sm"` call site across the app automatically inherits the new height with zero per-call-site changes, since only the CSS behind those size keys changes, not the keys themselves. Two now-redundant size keys (`icon-lg`, superseded by the new `icon` default) get their 2 call sites repointed in the same task to keep the build green. A separate, unrelated fix wraps one under-labeled checkbox in a `<label>`.
+**Architecture:** A single CSS-only change to the shared `Button` component's size scale (`src/components/ui/button.tsx`) — every existing `size="sm"` call site across the app automatically inherits the new height with zero per-call-site changes, since only the CSS behind that size key changes, not the key itself. Two now-redundant icon size keys (`icon-lg` and, after code review, `icon-sm` too — both now visually indistinguishable from the new `icon` default) get their 3 call sites repointed in the same task to keep the build green. A separate, unrelated fix wraps one under-labeled checkbox in a `<label>`.
 
 **Tech Stack:** Tailwind CSS utility classes only (via `class-variance-authority`'s `cva`). No new dependencies, no test infrastructure changes.
 
@@ -17,8 +17,9 @@
 **Files:**
 - Modify: `src/components/ui/button.tsx`
 - Modify: `src/components/portal/portaal-sidebar.tsx`
+- Modify: `src/components/ui/dialog.tsx`
 
-These two files must change together: removing the `icon-lg` size key from `button.tsx` without updating its 2 call sites in `portaal-sidebar.tsx` would leave those `size="icon-lg"` usages referencing a size that no longer exists, which TypeScript would reject — breaking the build.
+These three files must change together: removing the `icon-lg`/`icon-sm` size keys from `button.tsx` without updating their call sites in `portaal-sidebar.tsx`/`dialog.tsx` would leave those `size="icon-lg"`/`size="icon-sm"` usages referencing sizes that no longer exist, which TypeScript would reject — breaking the build.
 
 - [ ] **Step 1: Update `button.tsx`'s size scale**
 
@@ -48,18 +49,16 @@ to:
           "h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
         sm: "h-9 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
         icon: "size-9",
-        "icon-sm":
-          "size-9 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
       },
 ```
 
 Note what this does and doesn't do:
 - `default`'s height goes from `h-8` (32px) to `h-9` (36px); `icon`'s size goes from `size-8` to `size-9`. Every `<Button>` call site in the app that doesn't pass an explicit `size` prop already uses `default` (the component's own `defaultVariants`), so those automatically become 36px too.
-- `sm`/`icon-sm` keep their exact same other classes (padding, gap, text size, border radius) — only their height/size numbers change from `h-7`/`size-7` to `h-9`/`size-9`. Every existing `size="sm"`/`size="icon-sm"` call site in the app (33 and 1 respectively, found via `grep -rn 'size="sm"' src/` and `grep -rn 'size="icon-sm"' src/`) inherits the new height automatically — **none of those call sites need to change**.
+- `sm` keeps its exact same other classes (padding, gap, text size, border radius) — only its height changes from `h-7` to `h-9`. Every existing `size="sm"` call site in the app (33, found via `grep -rn 'size="sm"' src/`) inherits the new height automatically — **none of those call sites need to change**.
 - `xs`, `lg`, and `icon-xs` are removed entirely: `grep -rn 'size="xs"\|size="lg"\|size="icon-xs"' src/` finds zero matches anywhere in the codebase, so removing them is safe (dead code), and keeping a smaller-than-the-new-floor option around would undermine the point of this change for any future use.
-- `icon-lg` is removed because it's now numerically identical to the new `icon` (`size-9` either way) — see Step 2 for its 2 call sites.
+- `icon-lg` is removed because it's now numerically identical to the new `icon` (`size-9` either way). `icon-sm` is removed for the same reason: once both are `size-9`, the only remaining difference (an 8px vs. 10px border-radius on an otherwise identical 36×36 square) isn't a meaningful distinction — see Step 2 for both size keys' call sites.
 
-- [ ] **Step 2: Repoint `portaal-sidebar.tsx`'s 2 `icon-lg` usages to `icon`**
+- [ ] **Step 2: Repoint the 3 now-removed icon-size usages to `icon`**
 
 In `src/components/portal/portaal-sidebar.tsx`, change:
 
@@ -85,15 +84,35 @@ to:
                 <DialogPrimitive.Close render={<Button variant="ghost" size="icon" />}>
 ```
 
+In `src/components/ui/dialog.tsx`, change:
+
+```tsx
+              <Button
+                variant="ghost"
+                className="absolute top-2 right-2"
+                size="icon-sm"
+              />
+```
+
+to:
+
+```tsx
+              <Button
+                variant="ghost"
+                className="absolute top-2 right-2"
+                size="icon"
+              />
+```
+
 - [ ] **Step 3: Verify the build**
 
 Run: `npm run build`
-Expected: builds successfully, zero errors. If `icon-lg` were left referenced anywhere, this step would fail with a TypeScript error on the `size` prop — a clean build here confirms Step 2 caught every usage.
+Expected: builds successfully, zero errors. If `icon-lg` or `icon-sm` were left referenced anywhere, this step would fail with a TypeScript error on the `size` prop — a clean build here confirms Step 2 caught every usage.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add src/components/ui/button.tsx src/components/portal/portaal-sidebar.tsx
+git add src/components/ui/button.tsx src/components/portal/portaal-sidebar.tsx src/components/ui/dialog.tsx
 git commit -m "fix: knoppen krijgen een minimale hoogte van 36px voor betere tapbaarheid"
 ```
 
