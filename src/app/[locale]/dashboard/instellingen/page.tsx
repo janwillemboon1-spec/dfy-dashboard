@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { ContactgegevensFormulier } from '@/components/dashboard/contactgegevens-formulier';
+import { WachtwoordFormulier } from '@/components/dashboard/wachtwoord-formulier';
 
 // Geen expliciet client_id-filter nodig op de query hieronder: de "klant leest eigen
 // client"-RLS-policy (id = current_client_id()) scopet dit al af tot precies de klant van de
@@ -24,6 +25,12 @@ export default async function InstellingenPage() {
             telefoon={client?.telefoon ?? null}
             email={client?.email ?? ''}
           />
+        </div>
+      </div>
+      <div className="mt-10">
+        <h2 className="font-serif text-xl">Wachtwoord</h2>
+        <div className="mt-4">
+          <WachtwoordFormulier />
         </div>
       </div>
     </main>
