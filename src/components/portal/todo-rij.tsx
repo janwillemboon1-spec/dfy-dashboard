@@ -10,6 +10,7 @@ export interface Todo {
   naam: string;
   deadline: string;
   afgevinkt: boolean;
+  listingId: string | null;
 }
 
 function formatteerDeadline(deadline: string): string {

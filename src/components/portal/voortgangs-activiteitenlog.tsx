@@ -7,6 +7,7 @@ export interface ActiviteitenlogItem {
   id: string;
   datum: string;
   omschrijving: string;
+  listingId: string | null;
 }
 
 export function VoortgangsActiviteitenlog({ items }: { items: ActiviteitenlogItem[] }) {

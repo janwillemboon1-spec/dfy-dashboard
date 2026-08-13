@@ -6,6 +6,7 @@ export interface ChecklistItem {
   faseNummer: 1 | 2 | 3;
   naam: string;
   afgevinkt: boolean;
+  listingId: string | null;
 }
 
 const ALLE_FASEN = [1, 2, 3] as const;
