@@ -72,3 +72,32 @@ export async function wijzigEigenClientGegevens(input: {
   revalidatePath('/dashboard/instellingen');
   return { succes: true };
 }
+
+export async function wijzigEigenWachtwoord(input: {
+  huidigWachtwoord: string;
+  nieuwWachtwoord: string;
+}): Promise<{ succes: boolean; fout?: string }> {
+  if (input.nieuwWachtwoord.length < 6) {
+    return { succes: false, fout: 'Nieuw wachtwoord moet minimaal 6 tekens zijn.' };
+  }
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { succes: false, fout: 'Niet ingelogd.' };
+
+  // Supabase's updateUser-API vereist zelf geen herbevestiging van het huidige
+  // wachtwoord (alleen een actieve sessie) — deze aparte signInWithPassword-stap is er
+  // bewust bij, zodat iemand met tijdelijke toegang tot een ontgrendelde/ingelogde
+  // sessie (bv. een gedeelde computer) het wachtwoord niet kan overnemen zonder het
+  // huidige wachtwoord te kennen.
+  const { error: reauthError } = await supabase.auth.signInWithPassword({
+    email: user.email!,
+    password: input.huidigWachtwoord,
+  });
+  if (reauthError) return { succes: false, fout: 'Huidig wachtwoord is onjuist.' };
+
+  const { error: updateError } = await supabase.auth.updateUser({ password: input.nieuwWachtwoord });
+  if (updateError) return { succes: false, fout: updateError.message };
+
+  return { succes: true };
+}
