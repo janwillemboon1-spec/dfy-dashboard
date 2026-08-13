@@ -483,7 +483,7 @@ export function TodoToevoegenFormulier({
               id={`todo-woning-${clientId}`}
               value={listingId}
               onChange={(e) => setListingId(e.target.value)}
-              className="h-9 rounded-lg border border-input bg-transparent px-2.5 text-sm"
+              className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
             >
               <option value="">Algemeen</option>
               {listings.map((listing) => (
@@ -639,7 +639,7 @@ function TodoBewerkRij({
         <select
           value={listingId}
           onChange={(e) => setListingId(e.target.value)}
-          className="h-9 rounded-lg border border-input bg-transparent px-2.5 text-sm"
+          className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
         >
           <option value="">Algemeen</option>
           {listings.map((listing) => (
@@ -774,7 +774,7 @@ export function ActiviteitToevoegenFormulier({
             id={`activiteit-woning-${clientId}`}
             value={listingId}
             onChange={(e) => setListingId(e.target.value)}
-            className="h-9 rounded-lg border border-input bg-transparent px-2.5 text-sm"
+            className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
           >
             <option value="">Algemeen</option>
             {listings.map((listing) => (
@@ -912,7 +912,7 @@ export function VoortgangInhoud({
               id="woning-filter"
               value={geselecteerdeWoning ?? ''}
               onChange={(e) => setGeselecteerdeWoning(e.target.value || null)}
-              className="h-9 rounded-lg border border-input bg-transparent px-2.5 text-sm"
+              className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
             >
               <option value="">Alle woningen</option>
               {listings.map((listing) => (
