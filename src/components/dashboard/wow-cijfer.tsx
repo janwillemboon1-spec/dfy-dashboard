@@ -1,4 +1,8 @@
+import { Info } from 'lucide-react';
 import { MAAND_NAMEN_VOL } from '@/lib/constants/maanden';
+
+const IMPACTMETER_UITLEG =
+  'Dit bedrag bestaat uit de extra bruto huurinkomsten die de gast betaald heeft sinds start samenwerking t/m de huidige maand. Eventuele bijkomende kosten, toeslagen en upsells komen hier nog bij. Eventuele servicekosten voor het boekingskanaal gaan hier nog af. Dit is puur de huur die gasten hebben betaald.';
 
 export function WowCijfer({
   bedrag,
@@ -31,7 +35,13 @@ export function WowCijfer({
   return (
     <div className="py-12 text-center">
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Impactmeter</p>
-      <p className="mt-1 text-sm text-muted-foreground">Extra inkomsten sinds start samenwerking</p>
+      <p className="mt-1 flex items-center justify-center gap-1 text-sm text-muted-foreground">
+        Extra inkomsten sinds start samenwerking
+        <span title={IMPACTMETER_UITLEG}>
+          <Info className="h-3.5 w-3.5 cursor-help" aria-hidden="true" />
+          <span className="sr-only">{IMPACTMETER_UITLEG}</span>
+        </span>
+      </p>
       <h2 className="mt-2 font-serif text-5xl font-medium">
         <span className="sr-only">{bedrag >= 0 ? 'Toename van ' : 'Afname van '}</span>
         {teken} € {bedragTekst}
