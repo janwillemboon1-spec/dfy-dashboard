@@ -90,6 +90,9 @@ export async function wijzigEigenWachtwoord(input: {
   // bewust bij, zodat iemand met tijdelijke toegang tot een ontgrendelde/ingelogde
   // sessie (bv. een gedeelde computer) het wachtwoord niet kan overnemen zonder het
   // huidige wachtwoord te kennen.
+  // Niet-null: klant-accounts worden altijd met een e-mailadres aangemaakt (zie
+  // src/lib/onboarding/create-client-with-listings.ts) — er is geen telefoon- of
+  // OAuth-only login-pad in deze app.
   const { error: reauthError } = await supabase.auth.signInWithPassword({
     email: user.email!,
     password: input.huidigWachtwoord,
