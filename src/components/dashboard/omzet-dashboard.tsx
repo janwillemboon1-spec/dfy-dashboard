@@ -38,15 +38,56 @@ function berekenPeriode(id: PeriodeId, eigenStart: string, eigenEind: string): {
   return { start: eigenStart, eind: eigenEind };
 }
 
+interface TrendPunt {
+  maand: string;
+  omzet: number;
+  omzetStly: number;
+  omzetNulmeting: number | null;
+}
+
 interface OmzetData {
   portfolio: OmzetMetrics;
   portfolioStly: OmzetMetrics;
   portfolioNulmeting: OmzetMetrics | null;
-  listings: Array<OmzetMetrics & { listing_id: string; listing_naam: string; stly: OmzetMetrics; nulmeting: OmzetMetrics | null }>;
-  trend: Array<{ maand: string; omzet: number; omzetStly: number; omzetNulmeting: number | null }>;
+  listings: Array<OmzetMetrics & { listing_id: string; listing_naam: string; stly: OmzetMetrics; nulmeting: OmzetMetrics | null; trend: TrendPunt[] }>;
+  trend: TrendPunt[];
 }
 
-export function OmzetDashboard({ clientId }: { clientId?: string }) {
+interface OmzetWeergave {
+  huidig: OmzetMetrics;
+  vergelijking: OmzetMetrics | null;
+  kanalen: Record<string, { omzet: number; boekingen: number }>;
+  trend: TrendPunt[];
+  toonListingsTabel: boolean;
+}
+
+// Kiest, op basis van de woning-filter, welke cijfers de KPI-kaarten/kanalen/trend moeten
+// tonen: het portfolio-totaal (alle woningen) of de al-berekende cijfers van precies één
+// woning uit data.listings — de API levert die al kant-en-klaar mee (berekenOmzetVoorPeriode),
+// dus dit is puur een keuze uit al-opgehaalde data, zonder nieuwe netwerk-aanvraag.
+function bepaalWeergave(data: OmzetData, geselecteerdeWoning: string | null | undefined, vergelijkModus: 'stly' | 'nulmeting'): OmzetWeergave {
+  const geselecteerdeListing = geselecteerdeWoning ? data.listings.find((l) => l.listing_id === geselecteerdeWoning) : undefined;
+
+  if (geselecteerdeListing) {
+    return {
+      huidig: geselecteerdeListing,
+      vergelijking: vergelijkModus === 'stly' ? geselecteerdeListing.stly : geselecteerdeListing.nulmeting,
+      kanalen: geselecteerdeListing.kanalen,
+      trend: geselecteerdeListing.trend,
+      toonListingsTabel: false,
+    };
+  }
+
+  return {
+    huidig: data.portfolio,
+    vergelijking: vergelijkModus === 'stly' ? data.portfolioStly : data.portfolioNulmeting,
+    kanalen: data.portfolio.kanalen,
+    trend: data.trend,
+    toonListingsTabel: true,
+  };
+}
+
+export function OmzetDashboard({ clientId, geselecteerdeWoning }: { clientId?: string; geselecteerdeWoning?: string | null }) {
   const [periodeId, setPeriodeId] = useState<PeriodeId>('dit_jaar');
   const [eigenStart, setEigenStart] = useState('');
   const [eigenEind, setEigenEind] = useState('');
@@ -140,6 +181,7 @@ export function OmzetDashboard({ clientId }: { clientId?: string }) {
   }
 
   const nulmetingBeschikbaar = periodeId !== 'eigen';
+  const weergave = data ? bepaalWeergave(data, geselecteerdeWoning, vergelijkModus) : null;
 
   return (
     <div className="space-y-6">
@@ -192,16 +234,16 @@ export function OmzetDashboard({ clientId }: { clientId?: string }) {
 
       {laden ? (
         <p className="text-sm text-muted-foreground animate-pulse">Omzetdata ophalen...</p>
-      ) : !data ? null : (
+      ) : !data || !weergave ? null : (
         <div className="space-y-8">
           <KpiKaarten
-            huidig={data.portfolio}
-            vergelijking={vergelijkModus === 'stly' ? data.portfolioStly : data.portfolioNulmeting}
+            huidig={weergave.huidig}
+            vergelijking={weergave.vergelijking}
             vergelijkLabel={vergelijkModus === 'stly' ? 'STLY' : 'nulmeting'}
           />
-          <KanaalUitsplitsing kanalen={data.portfolio.kanalen} />
-          <ListingsTabel listings={data.listings} />
-          <TrendTabel trend={data.trend} vergelijkModus={vergelijkModus} />
+          <KanaalUitsplitsing kanalen={weergave.kanalen} />
+          {weergave.toonListingsTabel && <ListingsTabel listings={data.listings} />}
+          <TrendTabel trend={weergave.trend} vergelijkModus={vergelijkModus} />
         </div>
       )}
     </div>
