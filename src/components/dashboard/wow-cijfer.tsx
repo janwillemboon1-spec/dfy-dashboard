@@ -21,6 +21,12 @@ export function WowCijfer({
     );
   }
 
+  // Zelfde peildatum-logica (UTC-maand) als de bovengrens in berekenMaandVergelijkingen
+  // (bereken-resultaten.ts) — dit label moet altijd overeenkomen met de daadwerkelijk
+  // laatste meegetelde maand in het bedrag hierboven.
+  const nu = new Date();
+  const huidigeMaand = { jaar: nu.getUTCFullYear(), maand: nu.getUTCMonth() + 1 };
+
   const teken = bedrag >= 0 ? '+' : '−';
   const absoluteWaarde = Math.abs(bedrag);
   // Hele euro's: dit is een oriënterend hero-cijfer, geen boekhoudkundig bedrag —
@@ -48,7 +54,8 @@ export function WowCijfer({
       </h2>
       {startmaand && (
         <p className="mt-2 text-sm text-muted-foreground">
-          sinds {MAAND_NAMEN_VOL[startmaand.maand - 1]} {startmaand.jaar}
+          sinds {MAAND_NAMEN_VOL[startmaand.maand - 1]} {startmaand.jaar} t/m{' '}
+          {MAAND_NAMEN_VOL[huidigeMaand.maand - 1]} {huidigeMaand.jaar}
         </p>
       )}
     </div>
