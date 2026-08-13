@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { vinkTodoAf, wijzigTodo, verwijderTodo } from '@/app/[locale]/admin/klanten/[id]/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import type { VoortgangListing } from './voortgang-listing';
 
 export interface Todo {
   id: string;
@@ -25,10 +26,12 @@ export function TodoRij({
   clientId,
   todo,
   isAdmin,
+  listings,
 }: {
   clientId: string;
   todo: Todo;
   isAdmin: boolean;
+  listings: VoortgangListing[];
 }) {
   const [bewerken, setBewerken] = useState(false);
   const [foutmelding, setFoutmelding] = useState<string | null>(null);
@@ -59,7 +62,7 @@ export function TodoRij({
   }
 
   if (bewerken) {
-    return <TodoBewerkRij clientId={clientId} todo={todo} onKlaar={() => setBewerken(false)} />;
+    return <TodoBewerkRij clientId={clientId} todo={todo} listings={listings} onKlaar={() => setBewerken(false)} />;
   }
 
   return (
@@ -91,14 +94,17 @@ export function TodoRij({
 function TodoBewerkRij({
   clientId,
   todo,
+  listings,
   onKlaar,
 }: {
   clientId: string;
   todo: Todo;
+  listings: VoortgangListing[];
   onKlaar: () => void;
 }) {
   const [naam, setNaam] = useState(todo.naam);
   const [deadline, setDeadline] = useState(todo.deadline);
+  const [listingId, setListingId] = useState(todo.listingId ?? '');
   const [foutmelding, setFoutmelding] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -106,7 +112,7 @@ function TodoBewerkRij({
     setFoutmelding(null);
     startTransition(async () => {
       try {
-        await wijzigTodo({ clientId, todoId: todo.id, naam, deadline });
+        await wijzigTodo({ clientId, todoId: todo.id, naam, deadline, listingId: listingId || null });
         onKlaar();
       } catch (error) {
         setFoutmelding((error as Error).message);
@@ -118,6 +124,20 @@ function TodoBewerkRij({
     <div className="flex items-center gap-2 text-sm">
       <Input value={naam} onChange={(e) => setNaam(e.target.value)} className="flex-1" />
       <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} className="w-auto" />
+      {listings.length > 1 && (
+        <select
+          value={listingId}
+          onChange={(e) => setListingId(e.target.value)}
+          className="h-9 rounded-lg border border-input bg-transparent px-2.5 text-sm"
+        >
+          <option value="">Algemeen</option>
+          {listings.map((listing) => (
+            <option key={listing.id} value={listing.id}>
+              {listing.naam}
+            </option>
+          ))}
+        </select>
+      )}
       <Button size="sm" disabled={isPending} onClick={opslaan}>
         Opslaan
       </Button>

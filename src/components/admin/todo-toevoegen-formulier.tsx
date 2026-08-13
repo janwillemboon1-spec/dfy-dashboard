@@ -5,10 +5,18 @@ import { voegTodoToe } from '@/app/[locale]/admin/klanten/[id]/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { STANDAARD_TODO_NAMEN } from '@/lib/constants/todos';
+import type { VoortgangListing } from '@/components/portal/voortgang-listing';
 
-export function TodoToevoegenFormulier({ clientId }: { clientId: string }) {
+export function TodoToevoegenFormulier({
+  clientId,
+  listings,
+}: {
+  clientId: string;
+  listings: VoortgangListing[];
+}) {
   const [naam, setNaam] = useState('');
   const [deadline, setDeadline] = useState('');
+  const [listingId, setListingId] = useState('');
   const [foutmelding, setFoutmelding] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -24,7 +32,7 @@ export function TodoToevoegenFormulier({ clientId }: { clientId: string }) {
     }
     startTransition(async () => {
       try {
-        await voegTodoToe({ clientId, naam, deadline });
+        await voegTodoToe({ clientId, naam, deadline, listingId: listingId || null });
         setNaam('');
         setDeadline('');
       } catch (error) {
@@ -63,6 +71,26 @@ export function TodoToevoegenFormulier({ clientId }: { clientId: string }) {
             onChange={(e) => setDeadline(e.target.value)}
           />
         </div>
+        {listings.length > 1 && (
+          <div>
+            <label htmlFor={`todo-woning-${clientId}`} className="block text-xs text-muted-foreground">
+              Woning
+            </label>
+            <select
+              id={`todo-woning-${clientId}`}
+              value={listingId}
+              onChange={(e) => setListingId(e.target.value)}
+              className="h-9 rounded-lg border border-input bg-transparent px-2.5 text-sm"
+            >
+              <option value="">Algemeen</option>
+              {listings.map((listing) => (
+                <option key={listing.id} value={listing.id}>
+                  {listing.naam}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <Button size="sm" disabled={isPending} onClick={toevoegen}>
           {isPending ? 'Bezig...' : '+'}
         </Button>

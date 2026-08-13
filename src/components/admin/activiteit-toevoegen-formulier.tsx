@@ -4,10 +4,18 @@ import { useState, useTransition } from 'react';
 import { voegActiviteitToe } from '@/app/[locale]/admin/klanten/[id]/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import type { VoortgangListing } from '@/components/portal/voortgang-listing';
 
-export function ActiviteitToevoegenFormulier({ clientId }: { clientId: string }) {
+export function ActiviteitToevoegenFormulier({
+  clientId,
+  listings,
+}: {
+  clientId: string;
+  listings: VoortgangListing[];
+}) {
   const [datum, setDatum] = useState(new Date().toISOString().slice(0, 10));
   const [omschrijving, setOmschrijving] = useState('');
+  const [listingId, setListingId] = useState('');
   const [foutmelding, setFoutmelding] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -19,7 +27,7 @@ export function ActiviteitToevoegenFormulier({ clientId }: { clientId: string })
     }
     startTransition(async () => {
       try {
-        await voegActiviteitToe({ clientId, datum, omschrijving });
+        await voegActiviteitToe({ clientId, datum, omschrijving, listingId: listingId || null });
         setOmschrijving('');
       } catch (error) {
         setFoutmelding((error as Error).message);
@@ -50,6 +58,26 @@ export function ActiviteitToevoegenFormulier({ clientId }: { clientId: string })
           onChange={(e) => setOmschrijving(e.target.value)}
         />
       </div>
+      {listings.length > 1 && (
+        <div>
+          <label htmlFor={`activiteit-woning-${clientId}`} className="block text-xs text-muted-foreground">
+            Woning
+          </label>
+          <select
+            id={`activiteit-woning-${clientId}`}
+            value={listingId}
+            onChange={(e) => setListingId(e.target.value)}
+            className="h-9 rounded-lg border border-input bg-transparent px-2.5 text-sm"
+          >
+            <option value="">Algemeen</option>
+            {listings.map((listing) => (
+              <option key={listing.id} value={listing.id}>
+                {listing.naam}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <Button size="sm" disabled={isPending} onClick={toevoegen}>
         {isPending ? 'Bezig...' : '+'}
       </Button>

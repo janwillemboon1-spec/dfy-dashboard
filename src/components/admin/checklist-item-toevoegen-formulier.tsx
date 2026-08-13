@@ -5,10 +5,18 @@ import { voegChecklistItemToe } from '@/app/[locale]/admin/klanten/[id]/actions'
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FASE_NAMEN } from '@/lib/constants/fasen';
+import type { VoortgangListing } from '@/components/portal/voortgang-listing';
 
-export function ChecklistItemToevoegenFormulier({ clientId }: { clientId: string }) {
+export function ChecklistItemToevoegenFormulier({
+  clientId,
+  listings,
+}: {
+  clientId: string;
+  listings: VoortgangListing[];
+}) {
   const [faseNummer, setFaseNummer] = useState<1 | 2 | 3>(1);
   const [naam, setNaam] = useState('');
+  const [listingId, setListingId] = useState('');
   const [foutmelding, setFoutmelding] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -20,7 +28,7 @@ export function ChecklistItemToevoegenFormulier({ clientId }: { clientId: string
     }
     startTransition(async () => {
       try {
-        await voegChecklistItemToe({ clientId, faseNummer, naam });
+        await voegChecklistItemToe({ clientId, faseNummer, naam, listingId: listingId || null });
         setNaam('');
       } catch (error) {
         setFoutmelding((error as Error).message);
@@ -54,6 +62,26 @@ export function ChecklistItemToevoegenFormulier({ clientId }: { clientId: string
           </label>
           <Input id={`checklist-naam-${clientId}`} value={naam} onChange={(e) => setNaam(e.target.value)} />
         </div>
+        {listings.length > 1 && (
+          <div>
+            <label htmlFor={`checklist-woning-${clientId}`} className="block text-xs text-muted-foreground">
+              Woning
+            </label>
+            <select
+              id={`checklist-woning-${clientId}`}
+              value={listingId}
+              onChange={(e) => setListingId(e.target.value)}
+              className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
+            >
+              <option value="">Algemeen</option>
+              {listings.map((listing) => (
+                <option key={listing.id} value={listing.id}>
+                  {listing.naam}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <Button size="sm" disabled={isPending} onClick={toevoegen}>
           {isPending ? 'Bezig...' : '+'}
         </Button>
