@@ -44,8 +44,8 @@ export function ListingsTabel({ listings }: { listings: ListingRij[] }) {
   ];
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm bg-card border border-border rounded-xl">
+    <div className="overflow-x-auto bg-card border border-border rounded-xl">
+      <table className="w-full text-sm">
         <thead>
           <tr className="bg-muted text-xs text-muted-foreground uppercase select-none">
             {kolommen.map((kol) => (

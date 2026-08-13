@@ -56,8 +56,8 @@ export function TrendTabel({ trend, vergelijkModus }: { trend: TrendRij[]; verge
   if (trend.length === 0) return null;
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm bg-card border border-border rounded-xl">
+    <div className="overflow-x-auto bg-card border border-border rounded-xl">
+      <table className="w-full text-sm">
         <thead>
           <tr className="bg-muted text-xs text-muted-foreground uppercase">
             <th className="text-left px-4 py-2">Maand</th>
@@ -111,7 +111,7 @@ export function TrendTabel({ trend, vergelijkModus }: { trend: TrendRij[]; verge
 }
 ```
 
-The only functional change from the original: a new `<div className="overflow-x-auto">` wraps the `<table>`, and the `overflow-hidden` that used to sit directly on the `<table>` is dropped (it wasn't creating a scroll container there — the table's rounded corners come from `rounded-xl` regardless of the `overflow` value). Everything else is unchanged.
+The only functional change from the original: a new wrapper `<div>` takes over the `bg-card border border-border rounded-xl` styling (plus `overflow-x-auto` for the scroll container), and the `<table>` itself keeps only `w-full text-sm`. This isn't just a cosmetic move — `overflow-hidden` was clipping the `<thead>`'s `bg-muted` header background to the table's rounded top corners; dropping it without moving the clip elsewhere would leave the header's square corners visibly overhanging the rounded box on every screen width, not just narrow ones. Putting `overflow-x-auto` on the same element that owns `rounded-xl` (mirroring `kanaal-uitsplitsing.tsx`'s already-correct wrapper) preserves that clipping while adding scroll. Everything else is unchanged.
 
 - [ ] **Step 3: Replace the full contents of `listings-tabel.tsx`**
 
@@ -164,8 +164,8 @@ export function ListingsTabel({ listings }: { listings: ListingRij[] }) {
   ];
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm bg-card border border-border rounded-xl">
+    <div className="overflow-x-auto bg-card border border-border rounded-xl">
+      <table className="w-full text-sm">
         <thead>
           <tr className="bg-muted text-xs text-muted-foreground uppercase select-none">
             {kolommen.map((kol) => (
@@ -214,7 +214,7 @@ export function ListingsTabel({ listings }: { listings: ListingRij[] }) {
 }
 ```
 
-Same only-functional-change note as Step 2: a new wrapper div, `overflow-hidden` dropped from the `<table>` itself.
+Same only-functional-change note as Step 2: `bg-card border border-border rounded-xl` move to the wrapper `<div>` alongside `overflow-x-auto`, so the header's clipped rounded corners are preserved.
 
 - [ ] **Step 4: Replace the full contents of `admin/klanten/page.tsx`**
 

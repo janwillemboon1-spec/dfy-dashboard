@@ -11,8 +11,8 @@ export function TrendTabel({ trend, vergelijkModus }: { trend: TrendRij[]; verge
   if (trend.length === 0) return null;
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm bg-card border border-border rounded-xl">
+    <div className="overflow-x-auto bg-card border border-border rounded-xl">
+      <table className="w-full text-sm">
         <thead>
           <tr className="bg-muted text-xs text-muted-foreground uppercase">
             <th className="text-left px-4 py-2">Maand</th>
