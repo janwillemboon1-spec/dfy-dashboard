@@ -2,7 +2,11 @@ import 'server-only';
 import { createHmac, timingSafeEqual } from 'crypto';
 
 function handtekening(verlooptOp: number): string {
-  const hmac = createHmac('sha256', process.env.REGISTRATIE_WACHTWOORD ?? '');
+  const wachtwoord = process.env.REGISTRATIE_WACHTWOORD;
+  if (!wachtwoord) {
+    throw new Error('REGISTRATIE_WACHTWOORD ontbreekt — controleer de env vars van deze service.');
+  }
+  const hmac = createHmac('sha256', wachtwoord);
   hmac.update(String(verlooptOp));
   return hmac.digest('hex');
 }

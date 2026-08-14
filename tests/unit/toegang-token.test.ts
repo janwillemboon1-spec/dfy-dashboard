@@ -26,4 +26,11 @@ describe('toegang-token', () => {
   it('wijst een ontbrekend token af', () => {
     expect(tokenIsGeldig(undefined)).toBe(false);
   });
+
+  it('faalt dicht (gooit een fout) als REGISTRATIE_WACHTWOORD ontbreekt', () => {
+    delete process.env.REGISTRATIE_WACHTWOORD;
+    expect(() => maakToegangsToken(Date.now() + 60_000)).toThrow(
+      'REGISTRATIE_WACHTWOORD ontbreekt — controleer de env vars van deze service.',
+    );
+  });
 });
