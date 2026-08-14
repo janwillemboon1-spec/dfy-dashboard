@@ -234,7 +234,11 @@ export function OmzetDashboard({ clientId, geselecteerdeWoning }: { clientId?: s
 
       {laden ? (
         <p className="text-sm text-muted-foreground animate-pulse">Omzetdata ophalen...</p>
-      ) : !data || !weergave ? null : (
+      ) : !data || !weergave ? null : data.listings.length === 0 ? (
+        <p className="text-sm text-muted-foreground py-8 text-center">
+          We zijn je accommodatie(s) nog aan het koppelen — kom hier binnenkort terug.
+        </p>
+      ) : (
         <div className="space-y-8">
           <KpiKaarten
             huidig={weergave.huidig}
