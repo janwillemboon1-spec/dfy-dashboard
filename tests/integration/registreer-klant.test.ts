@@ -79,4 +79,29 @@ describe('registreerKlant', () => {
     expect(profile).not.toBeNull();
     await admin.auth.admin.deleteUser(profile!.id);
   });
+
+  it('rolt de client terug wanneer het aanmaken van de auth user faalt', async () => {
+    const email = `registratie-rollback-${Date.now()}@voorbeeld.nl`;
+    const input = { ...geldigeInput, email };
+
+    // Maak alvast een "kale" auth user aan met hetzelfde e-mailadres (zonder client/profiel),
+    // zodat de auth.admin.createUser()-call binnen registreerKlant faalt op een dubbel
+    // e-mailadres. Dit forceert het catch-blok en dus de delete_client_cascade-rollback,
+    // zonder de Supabase-client te mocken (conform de conventie van dit testbestand).
+    const { data: vooraf, error: voorafError } = await admin.auth.admin.createUser({
+      email,
+      password: geldigeInput.wachtwoord,
+      email_confirm: true,
+    });
+    expect(voorafError).toBeNull();
+
+    try {
+      await expect(registreerKlant(input)).rejects.toThrow(RegistratieError);
+
+      const { data: client } = await admin.from('clients').select('id').eq('email', email).maybeSingle();
+      expect(client).toBeNull();
+    } finally {
+      await admin.auth.admin.deleteUser(vooraf!.user!.id);
+    }
+  });
 });

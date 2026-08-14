@@ -79,11 +79,15 @@ export async function registreerKlant(input: RegistratieInput) {
 
     return { clientId };
   } catch (error) {
-    const { error: cascadeError } = await supabase.rpc('delete_client_cascade', {
-      target_client_id: clientId,
-    });
-    if (cascadeError) {
-      console.error(`[registreerKlant] rollback van client ${clientId} is mislukt:`, cascadeError);
+    try {
+      const { error: cascadeError } = await supabase.rpc('delete_client_cascade', {
+        target_client_id: clientId,
+      });
+      if (cascadeError) {
+        console.error(`[registreerKlant] rollback van client ${clientId} is mislukt:`, cascadeError);
+      }
+    } catch (rollbackException) {
+      console.error(`[registreerKlant] rollback van client ${clientId} gooide een fout:`, rollbackException);
     }
 
     if (authUserId) {
