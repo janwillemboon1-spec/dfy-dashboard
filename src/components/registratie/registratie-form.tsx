@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { registratieSchema, type RegistratieInput } from '@/lib/validation/registratie-schema';
@@ -12,7 +13,9 @@ import { Label } from '@/components/ui/label';
 
 export function RegistratieForm() {
   const router = useRouter();
-  const [status, setStatus] = useState<'idle' | 'versturen' | 'mislukt'>('idle');
+  const [status, setStatus] = useState<
+    'idle' | 'versturen' | 'mislukt' | 'account-aangemaakt-login-mislukt'
+  >('idle');
   const [foutmelding, setFoutmelding] = useState<string | null>(null);
 
   const form = useForm<RegistratieInput>({
@@ -50,7 +53,12 @@ export function RegistratieForm() {
         password: data.wachtwoord,
       });
       if (loginError) {
-        throw new Error('Account is aangemaakt, maar automatisch inloggen is mislukt. Log handmatig in via /login.');
+        // Het account bestaat al succesvol op de server — dit is geen registratiefout.
+        // Eigen status i.p.v. de generieke foutmelding-flow: bij een retry zou de klant
+        // anders alleen de verwarrende "e-mailadres bestaat al"-melding van de server
+        // te zien krijgen, zonder duidelijke weg terug naar /login.
+        setStatus('account-aangemaakt-login-mislukt');
+        return;
       }
 
       router.push('/dashboard');
@@ -98,11 +106,23 @@ export function RegistratieForm() {
         )}
       </div>
 
-      {foutmelding && <p className="text-sm text-destructive">{foutmelding}</p>}
+      {status === 'mislukt' && foutmelding && (
+        <p className="text-sm text-destructive">{foutmelding}</p>
+      )}
 
-      <Button type="submit" disabled={status === 'versturen'} className="w-full sm:w-auto">
-        {status === 'versturen' ? 'Bezig...' : 'Account aanmaken'}
-      </Button>
+      {status === 'account-aangemaakt-login-mislukt' ? (
+        <p className="text-sm text-destructive">
+          Je account is aangemaakt! Automatisch inloggen is helaas mislukt.{' '}
+          <Link href="/login" className="underline">
+            Log handmatig in
+          </Link>
+          .
+        </p>
+      ) : (
+        <Button type="submit" disabled={status === 'versturen'} className="w-full sm:w-auto">
+          {status === 'versturen' ? 'Bezig...' : 'Account aanmaken'}
+        </Button>
+      )}
     </form>
   );
 }
