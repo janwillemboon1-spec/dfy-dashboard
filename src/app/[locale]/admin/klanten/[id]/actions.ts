@@ -782,9 +782,9 @@ export async function voegAccommodatieToe(input: {
   await assertIsAdmin();
   if (!input.naam.trim()) throw new Error('Naam is verplicht.');
 
-  const admin = createAdminClient();
+  const supabase = await createClient();
 
-  const { data: listing, error: listingError } = await admin
+  const { data: listing, error: listingError } = await supabase
     .from('listings')
     .insert({ client_id: input.clientId, naam: input.naam.trim(), adres: input.adres })
     .select('id')
@@ -801,8 +801,17 @@ export async function voegAccommodatieToe(input: {
     omzet: 0,
     bezetting: 0,
   }));
-  const { error: nulmetingError } = await admin.from('nulmeting').insert(nulmetingRijen);
-  if (nulmetingError) throw new Error(nulmetingError.message);
+  const { error: nulmetingError } = await supabase.from('nulmeting').insert(nulmetingRijen);
+  // De listing hierboven staat op dit punt al vast, ongeacht of de nulmeting-insert
+  // hieronder lukt — zelfde situatie als de koppeling in koppelListing hierboven. Zonder
+  // deze specifieke foutmelding zou de admin een generieke fout zien die niet duidelijk
+  // maakt dat er al een (wees-)listing zonder nulmeting is aangemaakt, en zou een nieuwe
+  // poging via de dialoog een dubbele listing aanmaken bovenop de wees.
+  if (nulmetingError) {
+    throw new Error(
+      `Accommodatie aangemaakt, maar de nulmeting kon niet worden aangemaakt: ${nulmetingError.message}. Neem contact op om dit handmatig te herstellen.`
+    );
+  }
 
   revalidatePath(`/admin/klanten/${input.clientId}/instellingen`);
 
