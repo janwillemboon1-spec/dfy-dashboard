@@ -128,6 +128,7 @@ export type Database = {
           naam: string
           status: Database["public"]["Enums"]["client_status"]
           telefoon: string | null
+          zelf_geregistreerd: boolean
         }
         Insert: {
           aangemaakt_op?: string
@@ -136,6 +137,7 @@ export type Database = {
           naam: string
           status?: Database["public"]["Enums"]["client_status"]
           telefoon?: string | null
+          zelf_geregistreerd?: boolean
         }
         Update: {
           aangemaakt_op?: string
@@ -144,6 +146,7 @@ export type Database = {
           naam?: string
           status?: Database["public"]["Enums"]["client_status"]
           telefoon?: string | null
+          zelf_geregistreerd?: boolean
         }
         Relationships: []
       }
