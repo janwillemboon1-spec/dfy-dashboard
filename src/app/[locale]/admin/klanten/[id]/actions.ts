@@ -773,3 +773,38 @@ export async function ververPricelabsListingsCache(clientId: string) {
 
   revalidatePath(`/admin/klanten/${clientId}/instellingen`);
 }
+
+export async function voegAccommodatieToe(input: {
+  clientId: string;
+  naam: string;
+  adres: string | null;
+}): Promise<{ listingId: string }> {
+  await assertIsAdmin();
+  if (!input.naam.trim()) throw new Error('Naam is verplicht.');
+
+  const admin = createAdminClient();
+
+  const { data: listing, error: listingError } = await admin
+    .from('listings')
+    .insert({ client_id: input.clientId, naam: input.naam.trim(), adres: input.adres })
+    .select('id')
+    .single();
+  if (listingError) throw new Error(listingError.message);
+
+  // Zelfde patroon als legeNulmeting() in onboarding-form.tsx: 12 maanden op 0, klaar om
+  // door de admin gecorrigeerd te worden via de al bestaande nulmeting-correctierij.
+  const jaar = new Date().getFullYear();
+  const nulmetingRijen = Array.from({ length: 12 }, (_, i) => ({
+    listing_id: listing.id,
+    jaar,
+    maand: i + 1,
+    omzet: 0,
+    bezetting: 0,
+  }));
+  const { error: nulmetingError } = await admin.from('nulmeting').insert(nulmetingRijen);
+  if (nulmetingError) throw new Error(nulmetingError.message);
+
+  revalidatePath(`/admin/klanten/${input.clientId}/instellingen`);
+
+  return { listingId: listing.id };
+}

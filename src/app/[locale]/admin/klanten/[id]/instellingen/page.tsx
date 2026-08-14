@@ -10,6 +10,7 @@ import { KlantBewerkenFormulier } from '@/components/admin/klant-bewerken-formul
 import { KlantVerwijderenDialoog } from '@/components/admin/klant-verwijderen-dialoog';
 import { ListingBewerkenFormulier } from '@/components/admin/listing-bewerken-formulier';
 import { ListingVerwijderenDialoog } from '@/components/admin/listing-verwijderen-dialoog';
+import { ListingToevoegenFormulier } from '@/components/admin/listing-toevoegen-formulier';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default async function KlantDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -51,7 +52,10 @@ export default async function KlantDetailPage({ params }: { params: Promise<{ id
 
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-medium text-muted-foreground">Accommodaties</h2>
-        <PricelabsCacheVerversen clientId={id} />
+        <div className="flex gap-2">
+          <ListingToevoegenFormulier clientId={id} />
+          <PricelabsCacheVerversen clientId={id} />
+        </div>
       </div>
 
       {listings?.map((listing) => {
