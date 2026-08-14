@@ -5,7 +5,7 @@ export default async function KlantenPage() {
   const supabase = await createClient();
   const { data: klanten, error } = await supabase
     .from('clients')
-    .select('id, naam, email, status, aangemaakt_op, listings(count)')
+    .select('id, naam, email, status, zelf_geregistreerd, aangemaakt_op, listings(count)')
     .order('aangemaakt_op', { ascending: false });
 
   if (error) console.error('Kon klanten niet laden:', error);
@@ -45,6 +45,11 @@ export default async function KlantenPage() {
                 <tr key={klant.id} className="border-b border-border/50">
                   <td className="py-2">
                     <Link href={`/admin/klanten/${klant.id}/instellingen`} className="hover:underline">{klant.naam}</Link>
+                    {klant.zelf_geregistreerd && klant.status !== 'actief' && (
+                      <span className="ml-2 inline-block rounded bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary align-middle">
+                        Nieuw
+                      </span>
+                    )}
                   </td>
                   <td>{klant.email}</td>
                   <td>{klant.status}</td>
