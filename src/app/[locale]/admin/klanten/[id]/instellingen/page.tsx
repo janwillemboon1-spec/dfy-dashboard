@@ -12,6 +12,7 @@ import { ListingBewerkenFormulier } from '@/components/admin/listing-bewerken-fo
 import { ListingVerwijderenDialoog } from '@/components/admin/listing-verwijderen-dialoog';
 import { ListingToevoegenFormulier } from '@/components/admin/listing-toevoegen-formulier';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { InloggegevensLijst } from '@/components/portal/inloggegevens-lijst';
 
 export default async function KlantDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -31,6 +32,12 @@ export default async function KlantDetailPage({ params }: { params: Promise<{ id
     .select('pricelabs_listing_id, naam, pms')
     .order('naam');
 
+  const { data: inloggegevens } = await supabase
+    .from('inloggegevens')
+    .select('id, naam, gebruikersnaam, notitie')
+    .eq('client_id', id)
+    .order('aangemaakt_op', { ascending: false });
+
   return (
     <main className="mx-auto max-w-5xl py-10 px-4 space-y-10">
       <div className="flex items-start justify-between gap-4">
@@ -49,6 +56,11 @@ export default async function KlantDetailPage({ params }: { params: Promise<{ id
           <KlantVerwijderenDialoog clientId={id} naam={klant.naam} />
         </div>
       </div>
+
+      <section className="space-y-4">
+        <h2 className="text-sm font-medium text-muted-foreground">Inloggegevens</h2>
+        <InloggegevensLijst items={inloggegevens ?? []} kanBewerken={false} />
+      </section>
 
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-medium text-muted-foreground">Accommodaties</h2>
