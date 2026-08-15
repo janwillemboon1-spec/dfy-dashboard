@@ -17,7 +17,11 @@ export function InloggegevenRij({ item, kanBewerken }: { item: Inloggegeven; kan
   const [foutmelding, setFoutmelding] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  function toonWachtwoord() {
+  function wachtwoordKnop() {
+    if (wachtwoord !== null) {
+      setWachtwoord(null);
+      return;
+    }
     setFoutmelding(null);
     startTransition(async () => {
       const resultaat = await onthulWachtwoord({ id: item.id });
@@ -60,16 +64,10 @@ export function InloggegevenRij({ item, kanBewerken }: { item: Inloggegeven; kan
       )}
       <div className="flex items-center gap-2 text-sm">
         <span className="text-muted-foreground">Wachtwoord:</span>
-        {wachtwoord ? (
-          <span className="font-mono">{wachtwoord}</span>
-        ) : (
-          <>
-            <span className="font-mono">••••••••</span>
-            <Button size="sm" variant="ghost" onClick={toonWachtwoord} disabled={isPending}>
-              {isPending ? 'Bezig...' : 'Toon'}
-            </Button>
-          </>
-        )}
+        <span className="font-mono">{wachtwoord !== null ? wachtwoord : '••••••••'}</span>
+        <Button size="sm" variant="ghost" onClick={wachtwoordKnop} disabled={isPending}>
+          {isPending ? 'Bezig...' : wachtwoord !== null ? 'Verberg' : 'Toon'}
+        </Button>
       </div>
       {item.notitie && <p className="text-sm text-muted-foreground">{item.notitie}</p>}
       {foutmelding && <p className="text-sm text-destructive">{foutmelding}</p>}

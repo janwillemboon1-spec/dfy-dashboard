@@ -82,6 +82,7 @@ export function InloggegevenBewerkenFormulier({ item }: { item: Inloggegeven }) 
             <Input
               id="inloggegeven-bewerk-wachtwoord"
               type="password"
+              autoComplete="new-password"
               value={wachtwoord}
               onChange={(e) => setWachtwoord(e.target.value)}
               placeholder="Laat leeg om het huidige wachtwoord te behouden"

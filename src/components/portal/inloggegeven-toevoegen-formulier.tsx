@@ -80,6 +80,7 @@ export function InloggegevenToevoegenFormulier() {
             <Input
               id="inloggegeven-wachtwoord"
               type="password"
+              autoComplete="new-password"
               value={wachtwoord}
               onChange={(e) => setWachtwoord(e.target.value)}
             />
