@@ -273,6 +273,27 @@ export type Database = {
           },
         ]
       }
+      portaal_instellingen: {
+        Row: {
+          formulier_url: string | null
+          gewijzigd_op: string
+          id: string
+          video_url: string | null
+        }
+        Insert: {
+          formulier_url?: string | null
+          gewijzigd_op?: string
+          id?: string
+          video_url?: string | null
+        }
+        Update: {
+          formulier_url?: string | null
+          gewijzigd_op?: string
+          id?: string
+          video_url?: string | null
+        }
+        Relationships: []
+      }
       pricelabs_listings_cache: {
         Row: {
           adres: string | null
