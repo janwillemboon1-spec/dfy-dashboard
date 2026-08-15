@@ -21,6 +21,9 @@ export default async function KlantenPage() {
           <Link href="/admin/import" className="rounded border border-border px-4 py-2 text-sm">
             CSV importeren
           </Link>
+          <Link href="/admin/instellingen" className="rounded border border-border px-4 py-2 text-sm">
+            Instellingen
+          </Link>
         </div>
       </div>
       {error ? (
