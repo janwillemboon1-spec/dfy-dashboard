@@ -37,6 +37,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           titel="Boon Vakantieverhuur"
           items={[
             { label: 'Start hier', href: '/dashboard/start-hier' },
+            { label: 'Inloggegevens', href: '/dashboard/inloggegevens' },
             { label: 'Voortgang', href: '/dashboard/voortgang' },
             { label: 'Cijfers', href: '/dashboard/cijfers' },
             { label: 'Instellingen', href: '/dashboard/instellingen' },
