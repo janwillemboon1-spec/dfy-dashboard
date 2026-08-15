@@ -1,7 +1,11 @@
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function StartHierPage() {
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+
   const { data: instellingen } = await supabase
     .from('portaal_instellingen')
     .select('video_url, formulier_url')
