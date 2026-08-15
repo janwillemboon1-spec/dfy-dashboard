@@ -150,6 +150,47 @@ export type Database = {
         }
         Relationships: []
       }
+      inloggegevens: {
+        Row: {
+          aangemaakt_op: string
+          client_id: string
+          gebruikersnaam: string | null
+          gewijzigd_op: string
+          id: string
+          naam: string
+          notitie: string | null
+          wachtwoord_versleuteld: string
+        }
+        Insert: {
+          aangemaakt_op?: string
+          client_id: string
+          gebruikersnaam?: string | null
+          gewijzigd_op?: string
+          id?: string
+          naam: string
+          notitie?: string | null
+          wachtwoord_versleuteld: string
+        }
+        Update: {
+          aangemaakt_op?: string
+          client_id?: string
+          gebruikersnaam?: string | null
+          gewijzigd_op?: string
+          id?: string
+          naam?: string
+          notitie?: string | null
+          wachtwoord_versleuteld?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inloggegevens_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       listings: {
         Row: {
           aangemaakt_op: string
