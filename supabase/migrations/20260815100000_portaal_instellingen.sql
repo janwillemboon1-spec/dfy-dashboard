@@ -9,6 +9,11 @@ create table portaal_instellingen (
   gewijzigd_op timestamptz not null default now()
 );
 
+-- Zonder deze expliciete grant kan geen enkele rol (ook niet service_role) deze tabel
+-- lezen/schrijven in deze lokale Supabase-omgeving — zie de toelichting bij de
+-- vergelijkbare grant in 20260804102114_rls_and_functions.sql.
+grant select, insert, update, delete on portaal_instellingen to anon, authenticated, service_role;
+
 alter table portaal_instellingen enable row level security;
 
 -- Admin kan de instellingen volledig beheren (lezen, aanmaken, bijwerken).
