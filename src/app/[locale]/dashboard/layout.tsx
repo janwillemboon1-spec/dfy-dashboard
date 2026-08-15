@@ -36,6 +36,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <PortaalSidebar
           titel="Boon Vakantieverhuur"
           items={[
+            { label: 'Start hier', href: '/dashboard/start-hier' },
             { label: 'Voortgang', href: '/dashboard/voortgang' },
             { label: 'Cijfers', href: '/dashboard/cijfers' },
             { label: 'Instellingen', href: '/dashboard/instellingen' },
