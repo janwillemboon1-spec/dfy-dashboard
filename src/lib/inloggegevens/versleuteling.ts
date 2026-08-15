@@ -19,7 +19,7 @@ function haalSleutel(): Buffer {
 export function versleutel(platteTekst: string): string {
   const sleutel = haalSleutel();
   const iv = randomBytes(IV_LENGTE);
-  const cipher = createCipheriv(ALGORITME, sleutel, iv);
+  const cipher = createCipheriv(ALGORITME, sleutel, iv, { authTagLength: 16 });
   const cijfertekst = Buffer.concat([cipher.update(platteTekst, 'utf8'), cipher.final()]);
   const authTag = cipher.getAuthTag();
   return `${iv.toString('base64')}.${authTag.toString('base64')}.${cijfertekst.toString('base64')}`;
@@ -34,7 +34,7 @@ export function ontsleutel(cijfertekstToken: string): string {
   const iv = Buffer.from(ivBase64, 'base64');
   const authTag = Buffer.from(authTagBase64, 'base64');
   const cijfertekst = Buffer.from(cijfertekstBase64, 'base64');
-  const decipher = createDecipheriv(ALGORITME, sleutel, iv);
+  const decipher = createDecipheriv(ALGORITME, sleutel, iv, { authTagLength: 16 });
   decipher.setAuthTag(authTag);
   const platteTekst = Buffer.concat([decipher.update(cijfertekst), decipher.final()]);
   return platteTekst.toString('utf8');
