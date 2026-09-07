@@ -208,6 +208,72 @@ export async function syncListingNow(input: { listingId: string; clientId: strin
   revalidatePath(`/admin/klanten/${input.clientId}/instellingen`);
 }
 
+export interface CijfersSyncResultaat {
+  listingNaam: string;
+  succes: boolean;
+  fout?: string;
+}
+
+export async function ververCijfersVoorKlant(clientId: string): Promise<CijfersSyncResultaat[]> {
+  await assertIsAdmin();
+  const supabase = await createClient();
+
+  const { data: listings, error: listingsError } = await supabase
+    .from('listings')
+    .select('id, naam, pricelabs_listing_id')
+    .eq('client_id', clientId)
+    .not('pricelabs_listing_id', 'is', null);
+
+  if (listingsError) throw new Error(listingsError.message);
+  if (!listings || listings.length === 0) return [];
+
+  const nu = new Date();
+  const huidigeMaand = { jaar: nu.getUTCFullYear(), maand: nu.getUTCMonth() + 1 };
+  const resultaten: CijfersSyncResultaat[] = [];
+
+  for (const listing of listings) {
+    try {
+      const { data: cacheRow, error: cacheError } = await supabase
+        .from('pricelabs_listings_cache')
+        .select('pms')
+        .eq('pricelabs_listing_id', listing.pricelabs_listing_id!)
+        .single();
+      if (cacheError || !cacheRow?.pms) {
+        throw new Error('Kon PMS-type niet bepalen voor deze PriceLabs-listing.');
+      }
+
+      const { data: laatsteNulmeting } = await supabase
+        .from('nulmeting')
+        .select('jaar, maand')
+        .eq('listing_id', listing.id)
+        .order('jaar', { ascending: false })
+        .order('maand', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const vanaf = laatsteNulmeting
+        ? volgendeMaand(laatsteNulmeting.jaar, laatsteNulmeting.maand)
+        : huidigeMaand;
+
+      await syncListing(supabase, {
+        listingId: listing.id,
+        pricelabsListingId: listing.pricelabs_listing_id!,
+        pms: cacheRow.pms,
+        vanaf,
+        tot: huidigeMaand,
+      });
+
+      resultaten.push({ listingNaam: listing.naam, succes: true });
+    } catch (error) {
+      resultaten.push({ listingNaam: listing.naam, succes: false, fout: (error as Error).message });
+    }
+  }
+
+  revalidatePath(`/admin/klanten/${clientId}/instellingen`);
+
+  return resultaten;
+}
+
 const ISO_DATUM = /^\d{4}-\d{2}-\d{2}$/;
 
 export interface NulmetingMaandResultaat {
