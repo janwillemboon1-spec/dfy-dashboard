@@ -54,9 +54,10 @@ let adminUserId: string;
 let klantEmail: string;
 let klantUserId: string;
 let gekoppeldeListingId: string;
+let suffix: number;
 
 beforeAll(async () => {
-  const suffix = Date.now();
+  suffix = Date.now();
 
   const { data: client } = await admin
     .from('clients')
@@ -103,6 +104,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await admin.from('clients').delete().eq('id', clientId);
+  await admin.from('pricelabs_listings_cache').delete().eq('pricelabs_listing_id', `pl-cijfers-test-${suffix}`);
   await admin.auth.admin.deleteUser(adminUserId);
   await admin.auth.admin.deleteUser(klantUserId);
 });
