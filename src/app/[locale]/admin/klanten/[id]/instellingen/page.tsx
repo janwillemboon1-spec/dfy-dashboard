@@ -5,6 +5,7 @@ import { ResultatenTabel } from '@/components/admin/resultaten-tabel';
 import { ActielogFormulier } from '@/components/admin/actielog-formulier';
 import { PricelabsKoppeling } from '@/components/admin/pricelabs-koppeling';
 import { PricelabsCacheVerversen } from '@/components/admin/pricelabs-cache-verversen';
+import { CijfersVerversenKnop } from '@/components/admin/cijfers-verversen-knop';
 import { SamenwerkingNulmetingForm } from '@/components/admin/samenwerking-nulmeting-form';
 import { KlantBewerkenFormulier } from '@/components/admin/klant-bewerken-formulier';
 import { KlantVerwijderenDialoog } from '@/components/admin/klant-verwijderen-dialoog';
@@ -66,6 +67,7 @@ export default async function KlantDetailPage({ params }: { params: Promise<{ id
         <h2 className="text-sm font-medium text-muted-foreground">Accommodaties</h2>
         <div className="flex gap-2">
           <ListingToevoegenFormulier clientId={id} />
+          <CijfersVerversenKnop clientId={id} />
           <PricelabsCacheVerversen clientId={id} />
         </div>
       </div>
