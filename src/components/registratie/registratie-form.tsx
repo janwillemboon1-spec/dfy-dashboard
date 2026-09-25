@@ -61,7 +61,7 @@ export function RegistratieForm() {
         return;
       }
 
-      router.push('/dashboard');
+      router.push('/dashboard/start-hier');
       router.refresh();
     } catch (error) {
       setStatus('mislukt');
