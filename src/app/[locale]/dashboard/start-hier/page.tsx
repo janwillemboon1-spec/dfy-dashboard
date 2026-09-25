@@ -8,7 +8,7 @@ export default async function StartHierPage() {
 
   const { data: instellingen } = await supabase
     .from('portaal_instellingen')
-    .select('video_url, formulier_url')
+    .select('video_url')
     .maybeSingle();
 
   return (
@@ -16,8 +16,7 @@ export default async function StartHierPage() {
       <div>
         <h1 className="font-serif text-2xl">Start hier</h1>
         <p className="mt-2 text-muted-foreground">
-          Bekijk de video hieronder en vul alvast het formulier in — dat heeft ons team nodig
-          om jouw accommodatie(s) te koppelen.
+          Bekijk de video om goed van start te gaan.
         </p>
       </div>
 
@@ -36,21 +35,6 @@ export default async function StartHierPage() {
         ) : (
           <p className="rounded-lg border border-border py-8 text-center text-sm text-muted-foreground">
             Deze video wordt binnenkort toegevoegd.
-          </p>
-        )}
-      </section>
-
-      <section>
-        <h2 className="font-serif text-lg mb-3">Formulier</h2>
-        {instellingen?.formulier_url ? (
-          <iframe
-            src={instellingen.formulier_url}
-            className="h-[800px] w-full rounded-lg border border-border"
-            title="Formulier"
-          />
-        ) : (
-          <p className="rounded-lg border border-border py-8 text-center text-sm text-muted-foreground">
-            Dit formulier wordt binnenkort toegevoegd.
           </p>
         )}
       </section>
