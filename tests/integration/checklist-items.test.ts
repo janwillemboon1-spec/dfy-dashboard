@@ -210,16 +210,22 @@ describe('checklist en fase-percentage herberekening', () => {
 
     const { data: fase1Items } = await admin
       .from('voortgang_checklist_items')
-      .select('id')
+      .select('id, afgevinkt')
       .eq('client_id', clientId)
       .eq('fase_nummer', 1);
     expect(fase1Items!.length).toBeGreaterThan(0);
     const totaalFase1 = fase1Items!.length;
-    const triggerItemId = fase1Items![0].id;
+    // Sommige standaard-items (bv. "Dashboard geactiveerd") staan tegenwoordig al
+    // vooraf aangevinkt vanuit de seed-trigger — kies bewust een item dat dat nog niet
+    // is, zodat deze test altijd precies één item van niet-afgevinkt naar afgevinkt laat
+    // overgaan, ongeacht hoeveel andere items al vooraf aangevinkt zijn.
+    const nietAfgevinktItem = fase1Items!.find((item) => !item.afgevinkt);
+    expect(nietAfgevinktItem).toBeDefined();
+    const alAfgevinktAantal = fase1Items!.filter((item) => item.afgevinkt).length;
 
     await vinkChecklistItemAf({
       clientId,
-      itemId: triggerItemId,
+      itemId: nietAfgevinktItem!.id,
       faseNummer: 1,
       afgevinkt: true,
     });
@@ -230,6 +236,6 @@ describe('checklist en fase-percentage herberekening', () => {
       .eq('client_id', clientId)
       .eq('fase_nummer', 1)
       .single();
-    expect(fase!.percentage).toBe(Math.round((1 / totaalFase1) * 100));
+    expect(fase!.percentage).toBe(Math.round(((alAfgevinktAantal + 1) / totaalFase1) * 100));
   });
 });
