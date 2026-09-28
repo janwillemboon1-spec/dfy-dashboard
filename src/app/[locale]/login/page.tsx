@@ -136,9 +136,18 @@ function LoginForm() {
   );
 }
 
+function LoginLaden() {
+  return (
+    <main className="mx-auto max-w-md py-24">
+      <h1 className="font-serif text-2xl mb-6">Inloggen</h1>
+      <p className="text-sm text-muted-foreground">Laden...</p>
+    </main>
+  );
+}
+
 export default function LoginPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<LoginLaden />}>
       <LoginForm />
     </Suspense>
   );
