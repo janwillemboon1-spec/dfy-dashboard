@@ -28,6 +28,7 @@ export default async function KlantPortaalLayout({
         items={[
           { label: 'Voortgang', href: `/admin/klanten/${id}/voortgang` },
           { label: 'Cijfers', href: `/admin/klanten/${id}/cijfers` },
+          { label: 'Inloggegevens', href: `/admin/klanten/${id}/inloggegevens` },
           { label: 'Instellingen', href: `/admin/klanten/${id}/instellingen` },
         ]}
       />
